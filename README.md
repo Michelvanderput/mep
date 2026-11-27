@@ -51,6 +51,26 @@ Nieuwe klant aanmaken:
 pnpm mep:new-tenant --name "Bistro De Haven" --owner sanne@example.nl
 ```
 
+## Klantwebsites koppelen (`@mep/sdk`)
+
+Een klantsite haalt zijn gegevens uit de publieke, alleen-lezen API (`/api/public/<slug>/info|hours|menus`, korte CDN-cache)
+via `@mep/sdk`:
+
+```ts
+import { createClient, weekRowsGrouped } from "@mep/sdk";
+const mep = createClient({
+  baseUrl: "https://beheer.jouwdomein.nl/api",
+  tenant: "bistro-de-haven",
+});
+const [hours, menus] = await Promise.all([mep.hours(), mep.menus()]);
+mep.openStatus(hours).label; // "Nu open · tot 22:00", rekent zelf door op een gecachte pagina
+mep.photoSrcSet(photoId); // srcset voor <img>
+await mep.submit({ name, email, message }); // komt in de inbox
+```
+
+Allergenen zijn `null` zolang de ondernemer ze niet gecontroleerd heeft: toon dan niets in plaats van "geen allergenen".
+`apps/site-demo` is een werkend voorbeeld (`pnpm dev:local`, daarna `pnpm --filter @mep/site-demo dev`, poort 5174).
+
 ## Foto's
 
 Foto's worden bij het uploaden in de browser verkleind (max. 2000 px, onder 4 MB) en op de server omgezet naar

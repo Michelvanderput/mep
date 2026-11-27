@@ -15,6 +15,7 @@ import { createMiddleware } from "hono/factory";
 import { destroySession, findSessionUser, requestLogin, verifyLogin } from "./auth";
 import type { Config } from "./config";
 import type { Mailer } from "./mailer";
+import { publicRoutes } from "./routes/public";
 import { tenantRoutes } from "./routes/tenant";
 import type { Storage } from "./storage";
 import { createTenantWithOwner, SlugTakenError } from "./tenants";
@@ -154,7 +155,8 @@ export function createApp({ db, mailer, config, storage }: Deps) {
   });
 
   // --- Publiek: formulieren vanaf klantwebsites ---
-  app.use("/public/*", cors({ origin: "*", allowMethods: ["POST", "OPTIONS"] }));
+  app.use("/public/*", cors({ origin: "*", allowMethods: ["GET", "POST", "OPTIONS"] }));
+  app.route("/public/:slug", publicRoutes(db));
   app.post("/public/:slug/forms", zValidator("json", publicSubmissionSchema), async (c) => {
     const [tenant] = await db
       .select()

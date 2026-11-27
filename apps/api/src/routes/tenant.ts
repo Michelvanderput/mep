@@ -33,11 +33,10 @@ import { and, asc, count, desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { z } from "zod";
+import { loadHours as loadHoursFor } from "../hours";
 import { InvalidImageError, processImage } from "../images";
 import type { Storage } from "../storage";
 import { type Area, can, type Env } from "../types";
-
-const EMPTY_WEEK: WeekSchedule = [[], [], [], [], [], [], []];
 
 export function tenantRoutes(db: Database, storage: Storage) {
   const r = new Hono<Env>();
@@ -86,34 +85,7 @@ export function tenantRoutes(db: Database, storage: Storage) {
       entityId,
     });
 
-  const loadHours = async (tenantId: string) => {
-    const rows = await db.select().from(openingHours).where(eq(openingHours.tenantId, tenantId));
-    const exceptions = await db
-      .select()
-      .from(openingExceptions)
-      .where(eq(openingExceptions.tenantId, tenantId))
-      .orderBy(asc(openingExceptions.date));
-    const schedule = (kind: string) =>
-      (rows.find((x) => x.kind === kind)?.schedule ?? EMPTY_WEEK) as WeekSchedule;
-    return {
-      timezone:
-        (
-          await db
-            .select({ tz: tenants.timezone })
-            .from(tenants)
-            .where(eq(tenants.id, tenantId))
-            .limit(1)
-        )[0]?.tz ?? "Europe/Amsterdam",
-      venue: schedule("venue"),
-      kitchen: schedule("kitchen"),
-      exceptions: exceptions.map((e) => ({
-        date: e.date,
-        closed: e.closed,
-        slots: e.slots,
-        reason: e.reason,
-      })),
-    };
-  };
+  const loadHours = (tenantId: string) => loadHoursFor(db, tenantId);
 
   /** Foto moet van dezelfde zaak zijn; anders wordt hij genegeerd (geen lek tussen zaken). */
   const ownedMediaId = async (tenantId: string, id: string | null | undefined) => {

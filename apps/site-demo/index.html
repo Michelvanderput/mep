@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <title>Voorbeeldsite</title>
+  </head>
+  <body>
+    <header class="top">
+      <h1 id="name">…</h1>
+      <p id="badge" class="badge" role="status" aria-live="polite"></p>
+    </header>
+    <main>
+      <section id="hours" aria-labelledby="h-hours"><h2 id="h-hours">Openingstijden</h2><dl id="hours-list"></dl><p id="exceptions" class="note"></p></section>
+      <section id="menu" aria-labelledby="h-menu"><h2 id="h-menu">Menukaart</h2><div id="menu-tabs" class="tabs" role="tablist"></div><div id="menu-body"></div>
+        <p class="note">Heb je een allergie? Vraag het de bediening, ook als er hieronder niets bij staat.</p></section>
+      <section id="contact" aria-labelledby="h-contact"><h2 id="h-contact">Contact of groepsaanvraag</h2>
+        <form id="form">
+          <label>Naam<input name="name" required autocomplete="name" /></label>
+          <label>E-mail<input name="email" type="email" required autocomplete="email" /></label>
+          <label>Bericht<textarea name="message" required rows="4"></textarea></label>
+          <input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" class="hp" />
+          <button type="submit">Verstuur</button>
+          <p id="form-status" role="status"></p>
+        </form></section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
