@@ -93,3 +93,64 @@ describe("feestdagen", () => {
     expect(next.map((x) => x.date)).toEqual(["2026-12-31", "2027-01-01"]);
   });
 });
+
+import { addDays, expandOccurrences, isPastEvent } from "../src";
+
+describe("evenementen", () => {
+  const ev = (
+    o: Partial<{
+      id: string;
+      date: string;
+      startTime: string;
+      repeat: string;
+      repeatUntil: string | null;
+    }>,
+  ) => ({
+    id: "e",
+    date: "2026-05-05",
+    startTime: "20:00",
+    repeat: "none",
+    repeatUntil: null,
+    ...o,
+  });
+
+  test("addDays over maand- en zomertijdgrens", () => {
+    expect(addDays("2026-03-28", 7)).toBe("2026-04-04");
+    expect(addDays("2026-12-28", 7)).toBe("2027-01-04");
+    expect(addDays("2026-10-25", 1)).toBe("2026-10-26");
+  });
+
+  test("wekelijks evenement begint bij de eerste keer vanaf vandaag", () => {
+    // elke dinsdag vanaf 5 mei; vandaag is woensdag 13 mei
+    const out = expandOccurrences([ev({ repeat: "weekly" })], "2026-05-13", { limit: 3 });
+    expect(out.map((o) => o.date)).toEqual(["2026-05-19", "2026-05-26", "2026-06-02"]);
+  });
+
+  test("vandaag zelf telt mee, einddatum begrenst", () => {
+    const out = expandOccurrences(
+      [ev({ repeat: "weekly", repeatUntil: "2026-05-26" })],
+      "2026-05-12",
+    );
+    expect(out.map((o) => o.date)).toEqual(["2026-05-12", "2026-05-19", "2026-05-26"]);
+  });
+
+  test("eenmalig verleden valt weg; sorteert op datum en tijd; limiet en horizon", () => {
+    const list = [
+      ev({ id: "a", date: "2026-05-01" }),
+      ev({ id: "b", date: "2026-05-20", startTime: "21:00" }),
+      ev({ id: "c", date: "2026-05-20", startTime: "19:00" }),
+    ];
+    expect(expandOccurrences(list, "2026-05-12").map((o) => o.event.id)).toEqual(["c", "b"]);
+    expect(
+      expandOccurrences([ev({ repeat: "weekly" })], "2026-05-12", { limit: 100, horizonDays: 14 }),
+    ).toHaveLength(3);
+  });
+
+  test("isPastEvent", () => {
+    expect(isPastEvent(ev({ date: "2026-05-01" }), "2026-05-12")).toBe(true);
+    expect(isPastEvent(ev({ repeat: "weekly" }), "2026-05-12")).toBe(false);
+    expect(isPastEvent(ev({ repeat: "weekly", repeatUntil: "2026-05-01" }), "2026-05-12")).toBe(
+      true,
+    );
+  });
+});

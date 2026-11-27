@@ -4,6 +4,7 @@
  */
 import { serve } from "@hono/node-server";
 import {
+  events,
   loginTokens,
   mediaAssets,
   memberships,
@@ -210,6 +211,32 @@ await db.insert(pages).values([
       body: "Onze bovenzaal biedt plaats aan 40 gasten.\n\nNeem contact op voor de mogelijkheden.",
     },
   },
+]);
+
+const dayOffset = (n: number) =>
+  new Date(Date.now() + n * 86_400_000).toLocaleDateString("sv-SE", {
+    timeZone: "Europe/Amsterdam",
+  });
+await db.insert(events).values([
+  {
+    tenantId: tenant.id,
+    title: "Pubquiz",
+    description: "Teams van maximaal zes. De winnaars krijgen een dinerbon.",
+    date: dayOffset(-21),
+    startTime: "20:00",
+    endTime: "23:00",
+    repeat: "weekly",
+    priceCents: 500,
+  },
+  {
+    tenantId: tenant.id,
+    title: "Live jazz",
+    description: "Het Havenkwartet speelt klassiekers.",
+    date: dayOffset(4),
+    startTime: "21:00",
+    ticketUrl: "https://tickets.example/jazz",
+  },
+  { tenantId: tenant.id, title: "Wijnproeverij", date: dayOffset(-10), startTime: "19:00" },
 ]);
 
 const ago = (min: number) => new Date(Date.now() - min * 60_000);

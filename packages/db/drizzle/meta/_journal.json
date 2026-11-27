@@ -36,6 +36,13 @@
       "when": 1795790047291,
       "tag": "0004_parallel_gabe_jones",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795790392073,
+      "tag": "0005_opposite_quicksilver",
+      "breakpoints": true
     }
   ]
 }

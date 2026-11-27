@@ -4,12 +4,12 @@ import { Navigate, NavLink, Outlet, useLocation, useNavigate, useParams } from "
 import { api, type Me, useLoad } from "../api";
 import { ErrorBox, icons, Spinner } from "../components/ui";
 
-type Area = "today" | "menu" | "hours" | "inbox" | "media" | "pages";
+type Area = "today" | "menu" | "hours" | "inbox" | "media" | "pages" | "events";
 const ACCESS: Record<Role, Area[]> = {
-  owner: ["today", "menu", "hours", "inbox", "media", "pages"],
-  manager: ["today", "menu", "hours", "inbox", "media", "pages"],
+  owner: ["today", "menu", "hours", "inbox", "media", "pages", "events"],
+  manager: ["today", "menu", "hours", "inbox", "media", "pages", "events"],
   kitchen: ["today", "menu", "media"],
-  staff: ["today", "inbox", "media", "pages"],
+  staff: ["today", "inbox", "media", "pages", "events"],
 };
 
 export interface TenantCtx {
@@ -66,29 +66,31 @@ export function TenantShell() {
       <div className="app">
         <Outlet />
       </div>
-      {!pathname.includes("/kaart/gerecht/") && !pathname.includes("/paginas/") && (
-        <div className="tabbar">
-          <nav aria-label="Hoofdmenu">
-            {tabs
-              .filter((t) => !t.area || can(t.area))
-              .map((t) => (
-                <NavLink
-                  key={t.to}
-                  to={t.to}
-                  end={t.end}
-                  className="tab"
-                  onClick={(e) => {
-                    if (e.currentTarget.getAttribute("aria-current") === "page") navigate(t.to);
-                  }}
-                >
-                  {t.icon}
-                  {t.label}
-                  {t.count ? <span className="count">{t.count}</span> : null}
-                </NavLink>
-              ))}
-          </nav>
-        </div>
-      )}
+      {!pathname.includes("/kaart/gerecht/") &&
+        !pathname.includes("/paginas/") &&
+        !pathname.includes("/evenementen/") && (
+          <div className="tabbar">
+            <nav aria-label="Hoofdmenu">
+              {tabs
+                .filter((t) => !t.area || can(t.area))
+                .map((t) => (
+                  <NavLink
+                    key={t.to}
+                    to={t.to}
+                    end={t.end}
+                    className="tab"
+                    onClick={(e) => {
+                      if (e.currentTarget.getAttribute("aria-current") === "page") navigate(t.to);
+                    }}
+                  >
+                    {t.icon}
+                    {t.label}
+                    {t.count ? <span className="count">{t.count}</span> : null}
+                  </NavLink>
+                ))}
+            </nav>
+          </div>
+        )}
     </Ctx.Provider>
   );
 }

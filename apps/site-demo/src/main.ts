@@ -21,12 +21,13 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 async function init() {
-  const [info, hours, menus, announcements, specials] = await Promise.all([
+  const [info, hours, menus, announcements, specials, agenda] = await Promise.all([
     mep.info(),
     mep.hours(),
     mep.menus(),
     mep.announcements(),
     mep.specials(),
+    mep.events(6),
   ]);
   document.title = `${info.name} · ${info.type === "restaurant" ? "Restaurant" : info.type}`;
   $("name").textContent = info.name;
@@ -72,6 +73,21 @@ async function init() {
       .join("")}
     ${c.accessibility ? `<p><b>Toegankelijkheid:</b> ${esc(c.accessibility)}</p>` : ""}
     ${c.instagram ? `<p><a href="${esc(c.instagram)}" rel="noopener">Instagram</a></p>` : ""}`;
+
+  $("agenda").hidden = agenda.length === 0;
+  $("agenda-list").innerHTML = agenda
+    .map((e) => {
+      const d = new Date(`${e.date}T12:00:00Z`).toLocaleDateString("nl-NL", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        timeZone: "UTC",
+      });
+      return `<li><div class="body"><div class="line"><b>${esc(e.title)}</b>${e.priceCents !== null ? `<span class="price">${formatPrice(e.priceCents)}</span>` : ""}</div>
+        <p>${d} · ${e.startTime}${e.endTime ? `–${e.endTime}` : ""}${e.recurring ? " · wekelijks" : ""}</p>
+        ${e.description ? `<p>${esc(e.description)}</p>` : ""}${e.ticketUrl ? `<p><a href="${esc(e.ticketUrl)}" rel="noopener">Tickets</a></p>` : ""}</div></li>`;
+    })
+    .join("");
 
   const banner = $("banner");
   banner.hidden = announcements.length === 0;

@@ -352,3 +352,31 @@ export const pages = pgTable(
   },
   (t) => [uniqueIndex("pages_tenant_key_uq").on(t.tenantId, t.key)],
 );
+
+// ---------------------------------------------------------------------------
+// Evenementen
+// ---------------------------------------------------------------------------
+
+/** Eenmalig of wekelijks terugkerend evenement. Datums in de tijdzone van de zaak. */
+export const events = pgTable(
+  "events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description").notNull().default(""),
+    /** Eerste (of enige) datum, JJJJ-MM-DD. */
+    date: text("date").notNull(),
+    startTime: text("start_time").notNull(),
+    endTime: text("end_time"),
+    repeat: text("repeat").notNull().default("none"),
+    repeatUntil: text("repeat_until"),
+    priceCents: integer("price_cents"),
+    ticketUrl: text("ticket_url"),
+    mediaId: uuid("media_id").references(() => mediaAssets.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (t) => [index("events_tenant_date_idx").on(t.tenantId, t.date)],
+);

@@ -16,7 +16,9 @@ Aanwezig:
 
 Pagina's: vaste pagina's (Home, Over ons, Contact) met vaste velden plus eigen tekstpagina's; platte tekst, een lege regel is een nieuwe alinea.
 
-Nog te doen: evenementen, nieuws, team, meertaligheid, de eerste echte Vercel-deploy en Row Level Security (nu wordt tenant-scheiding in de API afgedwongen en getest).
+Evenementen zijn eenmalig of wekelijks (bv. "elke dinsdag pubquiz", met optionele einddatum); aanmelden en tickets lopen via een ticketlink of het contactformulier.
+
+Nog te doen: nieuws, aanmeldingen voor evenementen, team, meertaligheid, de eerste echte Vercel-deploy en Row Level Security (nu wordt tenant-scheiding in de API afgedwongen en getest).
 
 Afwijkingen van de wireframes: gerechten worden direct live opgeslagen (geen concept/voorbeeld); sorteren gaat met pijltjes in plaats van slepen.
 
@@ -54,7 +56,7 @@ pnpm mep:new-tenant --name "Bistro De Haven" --owner sanne@example.nl
 
 ## Klantwebsites koppelen (`@mep/sdk`)
 
-Een klantsite haalt zijn gegevens uit de publieke, alleen-lezen API (`/api/public/<slug>/info|hours|menus|announcements|specials|pages`; 60 s CDN-cache, browsers controleren altijd)
+Een klantsite haalt zijn gegevens uit de publieke, alleen-lezen API (`/api/public/<slug>/info|hours|menus|announcements|specials|pages|events`; 60 s CDN-cache, browsers controleren altijd)
 via `@mep/sdk`:
 
 ```ts

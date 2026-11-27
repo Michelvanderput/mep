@@ -3,6 +3,7 @@ import {
   announcements,
   auditLog,
   type Database,
+  events as eventsTable,
   mediaAssets,
   memberships,
   menuItems,
@@ -19,9 +20,12 @@ import {
   announcementInputSchema,
   computeOpenStatus,
   createPageSchema,
+  eventInputSchema,
   exceptionInputSchema,
+  expandOccurrences,
   FIXED_PAGE_KEYS,
   isActiveOn,
+  isPastEvent,
   itemInputSchema,
   localParts,
   MAX_UPLOAD_BYTES,
@@ -619,6 +623,91 @@ export function tenantRoutes(db: Database, storage: Storage) {
         ),
       );
     await audit(c, "page.delete", c.req.param("key"));
+    return c.json({ ok: true });
+  });
+
+  // --------------------------- Evenementen ---------------------------
+  r.get("/events", need("events"), async (c) => {
+    const tenant = c.get("tenant");
+    const { date: today } = localParts(new Date(), tenant.timezone);
+    const rows = await db
+      .select()
+      .from(eventsTable)
+      .where(eq(eventsTable.tenantId, tenant.id))
+      .orderBy(asc(eventsTable.date));
+    const next = new Map<string, string>();
+    for (const o of expandOccurrences(rows, today, { limit: 500 }))
+      if (!next.has(o.event.id)) next.set(o.event.id, o.date);
+    const list = rows.map((e) => ({
+      ...e,
+      nextDate: next.get(e.id) ?? null,
+      past: isPastEvent(e, today),
+    }));
+    // Komende eerst (op eerstvolgende datum), afgelopen onderaan (nieuwste eerst)
+    list.sort((a, b) =>
+      a.past === b.past
+        ? a.past
+          ? b.date.localeCompare(a.date)
+          : (a.nextDate ?? "").localeCompare(b.nextDate ?? "")
+        : a.past
+          ? 1
+          : -1,
+    );
+    return c.json({ events: list });
+  });
+
+  r.get("/events/:id", need("events"), async (c) => {
+    const tenant = c.get("tenant");
+    const [row] = await db
+      .select()
+      .from(eventsTable)
+      .where(and(eq(eventsTable.id, c.req.param("id")), eq(eventsTable.tenantId, tenant.id)))
+      .limit(1);
+    if (!row) return c.json({ error: "Evenement niet gevonden" }, 404);
+    return c.json({ event: row });
+  });
+
+  const eventValues = async (tenantId: string, b: z.infer<typeof eventInputSchema>) => ({
+    title: b.title,
+    description: b.description,
+    date: b.date,
+    startTime: b.startTime,
+    endTime: b.endTime,
+    repeat: b.repeat,
+    repeatUntil: b.repeat === "weekly" ? b.repeatUntil : null,
+    priceCents: b.priceCents,
+    ticketUrl: b.ticketUrl || null,
+    mediaId: await ownedMediaId(tenantId, b.mediaId),
+  });
+
+  r.post("/events", need("events"), zValidator("json", eventInputSchema), async (c) => {
+    const tenant = c.get("tenant");
+    const [row] = await db
+      .insert(eventsTable)
+      .values({ tenantId: tenant.id, ...(await eventValues(tenant.id, c.req.valid("json"))) })
+      .returning();
+    await audit(c, "event.create", row?.id);
+    return c.json({ event: row }, 201);
+  });
+
+  r.put("/events/:id", need("events"), zValidator("json", eventInputSchema), async (c) => {
+    const tenant = c.get("tenant");
+    const [row] = await db
+      .update(eventsTable)
+      .set(await eventValues(tenant.id, c.req.valid("json")))
+      .where(and(eq(eventsTable.id, c.req.param("id")), eq(eventsTable.tenantId, tenant.id)))
+      .returning();
+    if (!row) return c.json({ error: "Evenement niet gevonden" }, 404);
+    await audit(c, "event.update", row.id);
+    return c.json({ event: row });
+  });
+
+  r.delete("/events/:id", need("events"), async (c) => {
+    const tenant = c.get("tenant");
+    await db
+      .delete(eventsTable)
+      .where(and(eq(eventsTable.id, c.req.param("id")), eq(eventsTable.tenantId, tenant.id)));
+    await audit(c, "event.delete", c.req.param("id"));
     return c.json({ ok: true });
   });
 

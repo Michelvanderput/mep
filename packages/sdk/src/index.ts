@@ -97,6 +97,20 @@ export interface ContactPage {
   facebook: string;
 }
 
+/** Eén keer dat een evenement plaatsvindt; wekelijkse evenementen zijn al uitgeklapt. */
+export interface EventOccurrence {
+  id: string;
+  date: string;
+  startTime: string;
+  endTime: string | null;
+  title: string;
+  description: string;
+  priceCents: number | null;
+  ticketUrl: string | null;
+  recurring: boolean;
+  photo: { id: string; path: string } | null;
+}
+
 export interface FormInput {
   type?: "contact" | "group" | "job";
   name: string;
@@ -145,6 +159,10 @@ export function createClient(opts: MepClientOptions) {
     pages: async () => (await get<{ pages: PageSummary[] }>("/pages")).pages,
     /** Eén pagina op sleutel: "home", "about", "contact" of de sleutel van een eigen pagina. */
     page: (key: string) => get<Page>(`/pages/${encodeURIComponent(key)}`),
+
+    /** Komende evenementen op datum gesorteerd (standaard 20). */
+    events: async (limit = 20) =>
+      (await get<{ events: EventOccurrence[] }>(`/events?limit=${limit}`)).events,
 
     openStatus(hours: Hours, now: Date = new Date()): OpenStatus {
       return computeOpenStatus({

@@ -1,6 +1,7 @@
 import {
   announcements,
   type Database,
+  events,
   menuItems,
   menuSections,
   menus,
@@ -10,6 +11,7 @@ import {
 } from "@mep/db";
 import {
   computeOpenStatus,
+  expandOccurrences,
   FIXED_PAGE_KEYS,
   isActiveOn,
   localParts,
@@ -180,6 +182,28 @@ export function publicRoutes(db: Database) {
       title: row?.title ?? PAGE_TEMPLATES[key as keyof typeof PAGE_TEMPLATES].title,
       custom: !fixedKeys.includes(key),
       content,
+    });
+  });
+
+  /** Komende keren van evenementen (wekelijkse zijn al uitgeklapt), op datum gesorteerd. */
+  r.get("/events", async (c) => {
+    const t = c.get("tenant");
+    const { date: today } = localParts(new Date(), t.timezone);
+    const limit = Math.min(50, Math.max(1, Number(c.req.query("limit")) || 20));
+    const rows = await db.select().from(events).where(eq(events.tenantId, t.id));
+    return c.json({
+      events: expandOccurrences(rows, today, { limit }).map(({ event: e, date }) => ({
+        id: e.id,
+        date,
+        startTime: e.startTime,
+        endTime: e.endTime,
+        title: e.title,
+        description: e.description,
+        priceCents: e.priceCents,
+        ticketUrl: e.ticketUrl,
+        recurring: e.repeat === "weekly",
+        photo: e.mediaId ? { id: e.mediaId, path: mediaPath(e.mediaId, 800) } : null,
+      })),
     });
   });
 

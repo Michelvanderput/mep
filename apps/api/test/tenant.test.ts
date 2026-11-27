@@ -338,3 +338,113 @@ describe("pagina's en teksten", () => {
     expect(t.checklist.noContactYet).toBe(false);
   });
 });
+
+describe("evenementen", () => {
+  test("aanmaken, wekelijks uitgeklapt op de site, validatie en rechten", async () => {
+    const owner = await addMember("sanne@example.nl", "owner");
+    const kitchen = await addMember("lotte@example.nl", "kitchen");
+    const day = (n: number) =>
+      new Date(Date.now() + n * 86_400_000).toLocaleDateString("sv-SE", {
+        timeZone: "Europe/Amsterdam",
+      });
+
+    expect((await send("GET", "/t/haven/events", undefined, kitchen)).status).toBe(403);
+
+    const weekly = await send(
+      "POST",
+      "/t/haven/events",
+      {
+        title: "Pubquiz",
+        date: day(-14),
+        startTime: "20:00",
+        endTime: "23:00",
+        repeat: "weekly",
+        priceCents: 500,
+      },
+      owner,
+    );
+    expect(weekly.status).toBe(201);
+    const once = await send(
+      "POST",
+      "/t/haven/events",
+      {
+        title: "Live muziek",
+        date: day(3),
+        startTime: "21:00",
+        ticketUrl: "https://tickets.example/x",
+      },
+      owner,
+    );
+    await send(
+      "POST",
+      "/t/haven/events",
+      { title: "Verleden", date: day(-3), startTime: "19:00" },
+      owner,
+    );
+
+    expect(
+      (
+        await send(
+          "POST",
+          "/t/haven/events",
+          { title: "X", date: day(1), startTime: "20:00" },
+          owner,
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await send(
+          "POST",
+          "/t/haven/events",
+          { title: "Fout", date: day(1), startTime: "20:00", endTime: "19:00" },
+          owner,
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await send(
+          "POST",
+          "/t/haven/events",
+          { title: "Fout", date: day(1), startTime: "20:00", ticketUrl: "http://onveilig" },
+          owner,
+        )
+      ).status,
+    ).toBe(400);
+
+    const admin = await (await send("GET", "/t/haven/events", undefined, owner)).json();
+    expect(
+      admin.events.map((e: { title: string; past: boolean }) => [e.title, e.past]),
+    ).toContainEqual(["Verleden", true]);
+    expect(admin.events.at(-1).title).toBe("Verleden"); // afgelopen onderaan
+
+    const pub = await (await app.request("/public/haven/events?limit=4")).json();
+    expect(pub.events).toHaveLength(4);
+    expect(pub.events.map((e: { title: string }) => e.title)).not.toContain("Verleden");
+    expect(
+      pub.events.filter((e: { title: string }) => e.title === "Pubquiz").length,
+    ).toBeGreaterThanOrEqual(2);
+    expect(
+      pub.events.every(
+        (e: { date: string }, i: number, a: { date: string }[]) =>
+          i === 0 || (a[i - 1] as { date: string }).date <= e.date,
+      ),
+    ).toBe(true);
+
+    const { event } = await once.json();
+    await send(
+      "PUT",
+      `/t/haven/events/${event.id}`,
+      { title: "Live jazz", date: day(3), startTime: "21:00", repeat: "none" },
+      owner,
+    );
+    expect(
+      (await (await app.request("/public/haven/events")).json()).events.map(
+        (e: { title: string }) => e.title,
+      ),
+    ).toContain("Live jazz");
+    await send("DELETE", `/t/haven/events/${event.id}`, undefined, owner);
+    expect((await send("GET", `/t/haven/events/${event.id}`, undefined, owner)).status).toBe(404);
+  });
+});

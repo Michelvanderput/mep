@@ -1,4 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import { EventEditor } from "./pages/EventEditor";
+import { EventsList } from "./pages/Events";
 import { Home } from "./pages/Home";
 import { Hours } from "./pages/Hours";
 import { Inbox } from "./pages/Inbox";
@@ -27,6 +29,8 @@ export function App() {
         <Route path="tijden" element={<Hours />} />
         <Route path="inbox" element={<Inbox />} />
         <Route path="fotos" element={<Photos />} />
+        <Route path="evenementen" element={<EventsList />} />
+        <Route path="evenementen/:id" element={<EventEditor />} />
         <Route path="paginas" element={<PagesList />} />
         <Route path="paginas/:key" element={<PageEditor />} />
         <Route path="meer" element={<More />} />

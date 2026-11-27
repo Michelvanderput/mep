@@ -83,6 +83,7 @@ export function slugify(input: string): string {
     .slice(0, 40);
 }
 
+export * from "./events";
 export * from "./holidays";
 export * from "./hours";
 export * from "./media";
