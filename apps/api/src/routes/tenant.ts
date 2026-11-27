@@ -10,6 +10,7 @@ import {
   menus,
   openingExceptions,
   openingHours,
+  pages,
   specials,
   submissions,
   tenants,
@@ -17,7 +18,9 @@ import {
 import {
   announcementInputSchema,
   computeOpenStatus,
+  createPageSchema,
   exceptionInputSchema,
+  FIXED_PAGE_KEYS,
   isActiveOn,
   itemInputSchema,
   localParts,
@@ -26,11 +29,16 @@ import {
   nameSchema,
   orderSchema,
   overrideTodaySchema,
+  PAGE_TEMPLATES,
+  pageContentSchema,
   type Role,
+  savePageSchema,
   slotSchema,
+  slugify,
   soldOutSchema,
   specialInputSchema,
   submissionPatchSchema,
+  templateFor,
   type WeekSchedule,
   weekScheduleSchema,
 } from "@mep/schemas";
@@ -132,6 +140,12 @@ export function tenantRoutes(db: Database, storage: Storage) {
       .from(mediaAssets)
       .where(and(eq(mediaAssets.tenantId, tenant.id), eq(mediaAssets.alt, "")));
 
+    const [contactPage] = await db
+      .select()
+      .from(pages)
+      .where(and(eq(pages.tenantId, tenant.id), eq(pages.key, "contact")))
+      .limit(1);
+
     let inbox: { newCount: number; recent: unknown[] } | null = null;
     if (can(role, "inbox")) {
       const [{ n } = { n: 0 }] = await db
@@ -174,6 +188,7 @@ export function tenantRoutes(db: Database, storage: Storage) {
       checklist: {
         missingAllergens,
         missingAlt,
+        noContactYet: !contactPage || !isFilled(contactPage.content),
         noHoursYet: hours.venue.every((d) => d.length === 0),
         upcomingExceptions: upcoming.length,
       },
@@ -485,6 +500,125 @@ export function tenantRoutes(db: Database, storage: Storage) {
       .returning();
     if (!item) return c.json({ error: "Gerecht niet gevonden" }, 404);
     await audit(c, soldOut ? "menu.item.soldout" : "menu.item.available", item.id);
+    return c.json({ ok: true });
+  });
+
+  // --------------------------- Pagina's en teksten ---------------------------
+  const isFilled = (content: Record<string, string>) =>
+    Object.values(content).some((v) => v.trim() !== "");
+
+  r.get("/pages", need("pages"), async (c) => {
+    const tenant = c.get("tenant");
+    const rows = await db
+      .select()
+      .from(pages)
+      .where(eq(pages.tenantId, tenant.id))
+      .orderBy(asc(pages.createdAt));
+    const byKey = new Map(rows.map((p) => [p.key, p]));
+    const fixed = FIXED_PAGE_KEYS.map((key) => ({
+      key,
+      title: PAGE_TEMPLATES[key].title,
+      description: PAGE_TEMPLATES[key].description,
+      custom: false,
+      filled: isFilled(byKey.get(key)?.content ?? {}),
+    }));
+    const custom = rows
+      .filter((p) => p.isCustom)
+      .map((p) => ({
+        key: p.key,
+        title: p.title,
+        description: "",
+        custom: true,
+        filled: isFilled(p.content),
+      }));
+    return c.json({ pages: [...fixed, ...custom] });
+  });
+
+  r.post("/pages", need("pages"), zValidator("json", createPageSchema), async (c) => {
+    const tenant = c.get("tenant");
+    const { title } = c.req.valid("json");
+    let base = slugify(title) || "pagina";
+    if ((FIXED_PAGE_KEYS as readonly string[]).includes(base)) base = `${base}-pagina`;
+    let key = base;
+    for (let n = 2; n < 50; n++) {
+      const [taken] = await db
+        .select({ id: pages.id })
+        .from(pages)
+        .where(and(eq(pages.tenantId, tenant.id), eq(pages.key, key)))
+        .limit(1);
+      if (!taken) break;
+      key = `${base}-${n}`;
+    }
+    await db.insert(pages).values({ tenantId: tenant.id, key, title, isCustom: true });
+    await audit(c, "page.create", key);
+    return c.json({ key }, 201);
+  });
+
+  r.get("/pages/:key", need("pages"), async (c) => {
+    const tenant = c.get("tenant");
+    const key = c.req.param("key");
+    const [row] = await db
+      .select()
+      .from(pages)
+      .where(and(eq(pages.tenantId, tenant.id), eq(pages.key, key)))
+      .limit(1);
+    const fixed = (FIXED_PAGE_KEYS as readonly string[]).includes(key);
+    if (!row && !fixed) return c.json({ error: "Pagina niet gevonden" }, 404);
+    return c.json({
+      key,
+      custom: !fixed,
+      title: row?.title ?? PAGE_TEMPLATES[key as keyof typeof PAGE_TEMPLATES].title,
+      content: row?.content ?? {},
+    });
+  });
+
+  r.put("/pages/:key", need("pages"), zValidator("json", savePageSchema), async (c) => {
+    const tenant = c.get("tenant");
+    const key = c.req.param("key");
+    const fixed = (FIXED_PAGE_KEYS as readonly string[]).includes(key);
+    const [existing] = await db
+      .select()
+      .from(pages)
+      .where(and(eq(pages.tenantId, tenant.id), eq(pages.key, key)))
+      .limit(1);
+    if (!existing && !fixed) return c.json({ error: "Pagina niet gevonden" }, 404);
+
+    const template = templateFor(key);
+    const parsed = pageContentSchema(template).safeParse(c.req.valid("json").content);
+    if (!parsed.success) {
+      return c.json(
+        { error: parsed.error.issues[0]?.message ?? "Controleer de ingevulde velden" },
+        400,
+      );
+    }
+    const content = parsed.data;
+    // Foto's moeten van deze zaak zijn.
+    for (const f of template.fields.filter((x) => x.type === "photo")) {
+      content[f.key] = (await ownedMediaId(tenant.id, content[f.key] || null)) ?? "";
+    }
+    const title = fixed
+      ? PAGE_TEMPLATES[key as keyof typeof PAGE_TEMPLATES].title
+      : (c.req.valid("json").title ?? existing?.title ?? key);
+    await db
+      .insert(pages)
+      .values({ tenantId: tenant.id, key, isCustom: !fixed, title, content })
+      .onConflictDoUpdate({ target: [pages.tenantId, pages.key], set: { title, content } });
+    await audit(c, "page.update", key);
+    return c.json({ ok: true });
+  });
+
+  r.delete("/pages/:key", need("pages"), async (c) => {
+    const tenant = c.get("tenant");
+    await db
+      .delete(pages)
+      .where(
+        and(
+          eq(pages.tenantId, tenant.id),
+          eq(pages.key, c.req.param("key")),
+          eq(pages.isCustom, true),
+        ),
+      );
+    await audit(c, "page.delete", c.req.param("key"));
     return c.json({ ok: true });
   });
 

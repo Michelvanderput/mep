@@ -11,6 +11,7 @@ import {
   menuSections,
   menus,
   openingHours,
+  pages,
   submissions,
   tenants,
   users,
@@ -161,6 +162,54 @@ await db.insert(menuItems).values([
   item(na, 1, "Chocoladetaart", "Hazelnoot, zeezout", 1050, {
     allergens: ["nuts", "eggs", "gluten", "milk"],
   }),
+]);
+
+await db.insert(pages).values([
+  {
+    tenantId: tenant.id,
+    key: "home",
+    title: "Home",
+    content: {
+      heroTitle: "Seizoensgebonden koken aan het water",
+      heroText:
+        "Bij Bistro De Haven eet je wat de maand te bieden heeft, van vis uit de buurt tot groenten van de markt.",
+    },
+  },
+  {
+    tenantId: tenant.id,
+    key: "about",
+    title: "Over ons",
+    content: {
+      heading: "Ons verhaal",
+      story:
+        "In 2019 namen Sanne en haar team de oude havenmeesterij over.\n\nWe koken met wat het seizoen biedt en werken zoveel mogelijk met leveranciers uit de regio.",
+    },
+  },
+  {
+    tenantId: tenant.id,
+    key: "contact",
+    title: "Contact en route",
+    content: {
+      street: "Havenkade 12",
+      postalCode: "1011 AB",
+      city: "Amsterdam",
+      phone: "020 123 45 67",
+      email: "info@dehaven.test",
+      route: "Tram 14 stopt op 2 minuten lopen. Parkeren kan in garage De Kade.",
+      accessibility: "Drempelvrije ingang en invalidentoilet.",
+      instagram: "https://instagram.com/dehaven",
+      facebook: "",
+    },
+  },
+  {
+    tenantId: tenant.id,
+    key: "zaalverhuur",
+    title: "Zaalverhuur",
+    isCustom: true,
+    content: {
+      body: "Onze bovenzaal biedt plaats aan 40 gasten.\n\nNeem contact op voor de mogelijkheden.",
+    },
+  },
 ]);
 
 const ago = (min: number) => new Date(Date.now() - min * 60_000);

@@ -1,10 +1,12 @@
 import {
   allergenLabel,
+  contactFields,
   createClient,
   dietLabel,
   formatPrice,
   type Hours,
   type Menu,
+  paragraphs,
   weekRowsGrouped,
 } from "@mep/sdk";
 import "./style.css";
@@ -44,6 +46,32 @@ async function init() {
     .join("<br>");
 
   renderMenus(menus);
+
+  const [home, about, contactPage] = await Promise.all([
+    mep.page("home"),
+    mep.page("about"),
+    mep.page("contact"),
+  ]);
+  const heroText = String(home.content.heroText ?? "");
+  $("intro").hidden = !heroText;
+  $("hero-text").textContent = heroText;
+  const story = String(about.content.story ?? "");
+  $("about").hidden = !story;
+  $("h-about").textContent = String(about.content.heading || about.title);
+  $("about-body").innerHTML = paragraphs(story)
+    .map((p) => `<p>${esc(p)}</p>`)
+    .join("");
+  const c = contactFields(contactPage);
+  const hasContact = Object.values(c).some(Boolean);
+  $("location").hidden = !hasContact;
+  $("location-body").innerHTML = `
+    ${c.street ? `<address>${esc(c.street)}<br>${esc(`${c.postalCode} ${c.city}`.trim())}</address>` : ""}
+    <p>${c.phone ? `<a href="tel:${c.phone.replace(/\s/g, "")}">${esc(c.phone)}</a>` : ""}${c.phone && c.email ? " · " : ""}${c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : ""}</p>
+    ${paragraphs(c.route)
+      .map((p) => `<p>${esc(p)}</p>`)
+      .join("")}
+    ${c.accessibility ? `<p><b>Toegankelijkheid:</b> ${esc(c.accessibility)}</p>` : ""}
+    ${c.instagram ? `<p><a href="${esc(c.instagram)}" rel="noopener">Instagram</a></p>` : ""}`;
 
   const banner = $("banner");
   banner.hidden = announcements.length === 0;

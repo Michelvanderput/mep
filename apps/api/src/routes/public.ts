@@ -4,10 +4,19 @@ import {
   menuItems,
   menuSections,
   menus,
+  pages,
   specials,
   tenants,
 } from "@mep/db";
-import { computeOpenStatus, isActiveOn, localParts, mediaPath } from "@mep/schemas";
+import {
+  computeOpenStatus,
+  FIXED_PAGE_KEYS,
+  isActiveOn,
+  localParts,
+  mediaPath,
+  PAGE_TEMPLATES,
+  templateFor,
+} from "@mep/schemas";
 import { and, asc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
@@ -120,6 +129,57 @@ export function publicRoutes(db: Database) {
               })),
           })),
       })),
+    });
+  });
+
+  const fixedKeys = FIXED_PAGE_KEYS as readonly string[];
+
+  /** Overzicht: welke pagina's bestaan en hebben inhoud (vaste pagina's staan er altijd bij). */
+  r.get("/pages", async (c) => {
+    const t = c.get("tenant");
+    const rows = await db
+      .select()
+      .from(pages)
+      .where(eq(pages.tenantId, t.id))
+      .orderBy(asc(pages.createdAt));
+    const filled = (content: Record<string, string>) =>
+      Object.values(content).some((v) => v.trim() !== "");
+    return c.json({
+      pages: [
+        ...FIXED_PAGE_KEYS.map((key) => ({
+          key,
+          title: PAGE_TEMPLATES[key].title,
+          custom: false,
+          filled: filled(rows.find((p) => p.key === key)?.content ?? {}),
+        })),
+        ...rows
+          .filter((p) => p.isCustom)
+          .map((p) => ({ key: p.key, title: p.title, custom: true, filled: filled(p.content) })),
+      ],
+    });
+  });
+
+  /** Eén pagina; foto-velden zijn uitgewerkt tot { id, path }. Lege velden ontbreken niet (altijd ""). */
+  r.get("/pages/:key", async (c) => {
+    const t = c.get("tenant");
+    const key = c.req.param("key");
+    const [row] = await db
+      .select()
+      .from(pages)
+      .where(and(eq(pages.tenantId, t.id), eq(pages.key, key)))
+      .limit(1);
+    if (!row && !fixedKeys.includes(key)) return c.json({ error: "Pagina niet gevonden" }, 404);
+    const template = templateFor(key);
+    const content: Record<string, unknown> = {};
+    for (const f of template.fields) {
+      const v = row?.content[f.key] ?? "";
+      content[f.key] = f.type === "photo" ? (v ? { id: v, path: mediaPath(v, 1600) } : null) : v;
+    }
+    return c.json({
+      key,
+      title: row?.title ?? PAGE_TEMPLATES[key as keyof typeof PAGE_TEMPLATES].title,
+      custom: !fixedKeys.includes(key),
+      content,
     });
   });
 

@@ -330,3 +330,25 @@ export const specials = pgTable(
   },
   (t) => [index("specials_tenant_idx").on(t.tenantId)],
 );
+
+// ---------------------------------------------------------------------------
+// Pagina's en teksten
+// ---------------------------------------------------------------------------
+
+/** Vaste pagina's (key = home/about/contact) en eigen tekstpagina's (key = slug, is_custom). */
+export const pages = pgTable(
+  "pages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    isCustom: boolean("is_custom").notNull().default(false),
+    title: text("title").notNull(),
+    /** Veldwaarden volgens het sjabloon in @mep/schemas (foto's als media-id). */
+    content: jsonb("content").$type<Record<string, string>>().notNull().default(sql`'{}'::jsonb`),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("pages_tenant_key_uq").on(t.tenantId, t.key)],
+);

@@ -14,7 +14,9 @@ Aanwezig:
 - `apps/admin` — mobiele beheer-app (React + Vite) met Vandaag, Kaart, Gerecht bewerken, Openingstijden, Inbox en Meer
 - Tenant-API (`/t/:slug/...`) met rechten per rol (eigenaar, manager, keuken, medewerker) en een publiek formulier-endpoint (`POST /public/:slug/forms`)
 
-Nog te doen: evenementen, nieuws, teksten en pagina's, meertaligheid, de eerste echte Vercel-deploy en Row Level Security (nu wordt tenant-scheiding in de API afgedwongen en getest).
+Pagina's: vaste pagina's (Home, Over ons, Contact) met vaste velden plus eigen tekstpagina's; platte tekst, een lege regel is een nieuwe alinea.
+
+Nog te doen: evenementen, nieuws, team, meertaligheid, de eerste echte Vercel-deploy en Row Level Security (nu wordt tenant-scheiding in de API afgedwongen en getest).
 
 Afwijkingen van de wireframes: gerechten worden direct live opgeslagen (geen concept/voorbeeld); sorteren gaat met pijltjes in plaats van slepen.
 
@@ -52,7 +54,7 @@ pnpm mep:new-tenant --name "Bistro De Haven" --owner sanne@example.nl
 
 ## Klantwebsites koppelen (`@mep/sdk`)
 
-Een klantsite haalt zijn gegevens uit de publieke, alleen-lezen API (`/api/public/<slug>/info|hours|menus|announcements|specials`; 60 s CDN-cache, browsers controleren altijd)
+Een klantsite haalt zijn gegevens uit de publieke, alleen-lezen API (`/api/public/<slug>/info|hours|menus|announcements|specials|pages`; 60 s CDN-cache, browsers controleren altijd)
 via `@mep/sdk`:
 
 ```ts

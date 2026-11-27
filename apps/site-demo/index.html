@@ -15,10 +15,13 @@
       <p id="badge" class="badge" role="status" aria-live="polite"></p>
     </header>
     <main>
+      <section id="intro" hidden><p id="hero-text" class="lead"></p></section>
+      <section id="about" aria-labelledby="h-about" hidden><h2 id="h-about"></h2><div id="about-body"></div></section>
       <section id="hours" aria-labelledby="h-hours"><h2 id="h-hours">Openingstijden</h2><dl id="hours-list"></dl><p id="exceptions" class="note"></p></section>
       <section id="specials" aria-labelledby="h-spec" hidden><h2 id="h-spec">Vandaag speciaal</h2><ul id="specials-list" class="items"></ul></section>
       <section id="menu" aria-labelledby="h-menu"><h2 id="h-menu">Menukaart</h2><div id="menu-tabs" class="tabs" role="tablist"></div><div id="menu-body"></div>
         <p class="note">Heb je een allergie? Vraag het de bediening, ook als er hieronder niets bij staat.</p></section>
+      <section id="location" aria-labelledby="h-loc" hidden><h2 id="h-loc">Adres en route</h2><div id="location-body"></div></section>
       <section id="contact" aria-labelledby="h-contact"><h2 id="h-contact">Contact of groepsaanvraag</h2>
         <form id="form">
           <label>Naam<input name="name" required autocomplete="name" /></label>

@@ -208,3 +208,18 @@ form button {
 .banner[hidden] {
   display: none;
 }
+.lead {
+  font-size: 1.15rem;
+  margin: 0;
+  max-width: 56ch;
+}
+address {
+  font-style: normal;
+  margin-bottom: 8px;
+}
+main p {
+  margin: 0 0 10px;
+}
+a {
+  color: var(--accent);
+}

@@ -29,6 +29,13 @@
       "when": 1795789738236,
       "tag": "0003_spooky_talkback",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795790047291,
+      "tag": "0004_parallel_gabe_jones",
+      "breakpoints": true
     }
   ]
 }

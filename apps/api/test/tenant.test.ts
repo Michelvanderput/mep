@@ -258,3 +258,83 @@ describe("meldingen en specials (beheer)", () => {
     expect(after.live).toEqual({ announcements: [], specials: [] });
   });
 });
+
+describe("pagina's en teksten", () => {
+  test("vaste pagina opslaan, valideren, openbaar lezen en eigen pagina beheren", async () => {
+    const owner = await addMember("sanne@example.nl", "owner");
+    const kitchen = await addMember("lotte@example.nl", "kitchen");
+
+    const list = await (await send("GET", "/t/haven/pages", undefined, owner)).json();
+    expect(list.pages.map((p: { key: string }) => p.key)).toEqual(["home", "about", "contact"]);
+    expect(list.pages.every((p: { filled: boolean }) => !p.filled)).toBe(true);
+    expect((await send("GET", "/t/haven/pages", undefined, kitchen)).status).toBe(403);
+
+    const ok = await send(
+      "PUT",
+      "/t/haven/pages/contact",
+      {
+        content: {
+          street: "Haven 1",
+          city: "Amsterdam",
+          phone: "020 123 45 67",
+          email: "Info@Haven.nl",
+          instagram: "https://instagram.com/haven",
+          onbekend: "x",
+        },
+      },
+      owner,
+    );
+    expect(ok.status).toBe(200);
+    for (const bad of [
+      { email: "geen-mail" },
+      { instagram: "http://onveilig.nl" },
+      { phone: "abc" },
+      { street: "x".repeat(101) },
+    ]) {
+      expect((await send("PUT", "/t/haven/pages/contact", { content: bad }, owner)).status).toBe(
+        400,
+      );
+    }
+
+    const pub = await (await app.request("/public/haven/pages/contact")).json();
+    expect(pub.content).toMatchObject({ street: "Haven 1", email: "info@haven.nl", route: "" });
+    expect(pub.content.onbekend).toBeUndefined();
+
+    // Foto van een andere zaak wordt genegeerd, eigen foto wordt uitgewerkt
+    const home = await send(
+      "PUT",
+      "/t/haven/pages/home",
+      { content: { heroTitle: "Welkom", photo: "00000000-0000-4000-8000-000000000000" } },
+      owner,
+    );
+    expect(home.status).toBe(200);
+    expect((await (await app.request("/public/haven/pages/home")).json()).content.photo).toBeNull();
+
+    // Eigen pagina
+    const created = await (
+      await send("POST", "/t/haven/pages", { title: "Zaalverhuur & feesten" }, owner)
+    ).json();
+    expect(created.key).toBe("zaalverhuur-feesten");
+    expect(
+      (await send("POST", "/t/haven/pages", { title: "Zaalverhuur & feesten" }, owner)).status,
+    ).toBe(201); // krijgt eigen sleutel
+    await send(
+      "PUT",
+      `/t/haven/pages/${created.key}`,
+      { title: "Zaalverhuur", content: { body: "Eerste alinea.\n\nTweede alinea." } },
+      owner,
+    );
+    const custom = await (await app.request(`/public/haven/pages/${created.key}`)).json();
+    expect(custom).toMatchObject({ title: "Zaalverhuur", custom: true });
+    expect(custom.content.body).toContain("Tweede alinea.");
+
+    expect((await app.request("/public/haven/pages/bestaat-niet")).status).toBe(404);
+    expect((await send("DELETE", "/t/haven/pages/home", undefined, owner)).status).toBe(200); // vaste pagina blijft
+    expect((await send("GET", "/t/haven/pages/home", undefined, owner)).status).toBe(200);
+    await send("DELETE", `/t/haven/pages/${created.key}`, undefined, owner);
+    expect((await app.request(`/public/haven/pages/${created.key}`)).status).toBe(404);
+
+    const t = await (await send("GET", "/t/haven/today", undefined, owner)).json();
+    expect(t.checklist.noContactYet).toBe(false);
+  });
+});

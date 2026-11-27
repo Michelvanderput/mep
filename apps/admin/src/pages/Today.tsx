@@ -31,6 +31,7 @@ interface TodayData {
   };
   inbox: { newCount: number; recent: Submission[] } | null;
   checklist: {
+    noContactYet: boolean;
     missingAllergens: number;
     missingAlt: number;
     noHoursYet: boolean;
@@ -245,6 +246,18 @@ export function Today() {
                     style={{ textDecoration: "none", color: "inherit" }}
                   >
                     <span className="grow s">Je openingstijden zijn nog niet ingevuld</span>
+                    <span aria-hidden>›</span>
+                  </Link>
+                )}
+                {data.checklist.noContactYet && can("pages") && (
+                  <Link
+                    to={`/t/${slug}/paginas/contact`}
+                    className="row"
+                    style={{ textDecoration: "none", color: "inherit" }}
+                  >
+                    <span className="grow s">
+                      Je contactgegevens (adres, telefoon) zijn nog niet ingevuld
+                    </span>
                     <span aria-hidden>›</span>
                   </Link>
                 )}

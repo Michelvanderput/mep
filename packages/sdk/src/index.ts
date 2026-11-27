@@ -72,6 +72,31 @@ export interface Special {
   photo: { id: string; path: string } | null;
 }
 
+export interface PageSummary {
+  key: string;
+  title: string;
+  custom: boolean;
+  filled: boolean;
+}
+/** Foto-velden zijn { id, path } of null; alle andere velden zijn tekst ("" als leeg). */
+export interface Page {
+  key: string;
+  title: string;
+  custom: boolean;
+  content: Record<string, string | { id: string; path: string } | null>;
+}
+export interface ContactPage {
+  street: string;
+  postalCode: string;
+  city: string;
+  phone: string;
+  email: string;
+  route: string;
+  accessibility: string;
+  instagram: string;
+  facebook: string;
+}
+
 export interface FormInput {
   type?: "contact" | "group" | "job";
   name: string;
@@ -115,6 +140,11 @@ export function createClient(opts: MepClientOptions) {
       (await get<{ announcements: Announcement[] }>("/announcements")).announcements,
     /** Dagspecials die vandaag gelden. */
     specials: async () => (await get<{ specials: Special[] }>("/specials")).specials,
+
+    /** Welke pagina's bestaan (vaste pagina's staan er altijd bij, ook als ze nog leeg zijn). */
+    pages: async () => (await get<{ pages: PageSummary[] }>("/pages")).pages,
+    /** Eén pagina op sleutel: "home", "about", "contact" of de sleutel van een eigen pagina. */
+    page: (key: string) => get<Page>(`/pages/${encodeURIComponent(key)}`),
 
     openStatus(hours: Hours, now: Date = new Date()): OpenStatus {
       return computeOpenStatus({
@@ -188,3 +218,23 @@ export function weekRowsGrouped(schedule: WeekSchedule) {
 
 export const allergenLabel = (id: string) => ALLERGENS.find((a) => a.id === id)?.label ?? id;
 export const dietLabel = (id: string) => DIETS.find((d) => d.id === id)?.label ?? id;
+
+/** Plat te tonen tekst als alinea's (lege regel = nieuwe alinea). */
+export { paragraphs } from "@mep/schemas";
+
+/** Alle contactgegevens als tekstvelden; handig voor een voettekst of contactblok. */
+export const contactFields = (page: Page): ContactPage => {
+  const text = (k: string) =>
+    typeof page.content[k] === "string" ? (page.content[k] as string) : "";
+  return {
+    street: text("street"),
+    postalCode: text("postalCode"),
+    city: text("city"),
+    phone: text("phone"),
+    email: text("email"),
+    route: text("route"),
+    accessibility: text("accessibility"),
+    instagram: text("instagram"),
+    facebook: text("facebook"),
+  };
+};

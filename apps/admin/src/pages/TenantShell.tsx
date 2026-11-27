@@ -4,12 +4,12 @@ import { Navigate, NavLink, Outlet, useLocation, useNavigate, useParams } from "
 import { api, type Me, useLoad } from "../api";
 import { ErrorBox, icons, Spinner } from "../components/ui";
 
-type Area = "today" | "menu" | "hours" | "inbox" | "media";
+type Area = "today" | "menu" | "hours" | "inbox" | "media" | "pages";
 const ACCESS: Record<Role, Area[]> = {
-  owner: ["today", "menu", "hours", "inbox", "media"],
-  manager: ["today", "menu", "hours", "inbox", "media"],
+  owner: ["today", "menu", "hours", "inbox", "media", "pages"],
+  manager: ["today", "menu", "hours", "inbox", "media", "pages"],
   kitchen: ["today", "menu", "media"],
-  staff: ["today", "inbox", "media"],
+  staff: ["today", "inbox", "media", "pages"],
 };
 
 export interface TenantCtx {
@@ -66,7 +66,7 @@ export function TenantShell() {
       <div className="app">
         <Outlet />
       </div>
-      {!pathname.includes("/kaart/gerecht/") && (
+      {!pathname.includes("/kaart/gerecht/") && !pathname.includes("/paginas/") && (
         <div className="tabbar">
           <nav aria-label="Hoofdmenu">
             {tabs

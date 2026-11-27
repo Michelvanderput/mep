@@ -87,3 +87,4 @@ export * from "./holidays";
 export * from "./hours";
 export * from "./media";
 export * from "./menu";
+export * from "./pages";

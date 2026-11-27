@@ -8,14 +8,7 @@ const ROLE_NL = {
   kitchen: "Keuken",
   staff: "Medewerker",
 } as const;
-const SOON = [
-  "Evenementen",
-  "Nieuws en acties",
-  "Foto's",
-  "Pagina's en teksten",
-  "Team en rollen",
-  "Instellingen",
-];
+const SOON = ["Evenementen", "Nieuws en acties", "Team en rollen", "Instellingen"];
 
 export function More() {
   const { slug, name, role, me, can } = useTenant();
@@ -43,6 +36,21 @@ export function More() {
               <div className="grow">
                 <div className="t">Foto's</div>
                 <div className="s">Je fotobibliotheek, beschrijvingen en uitsnede</div>
+              </div>
+              <span aria-hidden>›</span>
+            </div>
+          </Link>
+        )}
+        {can("pages") && (
+          <Link
+            to={`/t/${slug}/paginas`}
+            className="card"
+            style={{ textDecoration: "none", color: "inherit" }}
+          >
+            <div className="row">
+              <div className="grow">
+                <div className="t">Pagina's en teksten</div>
+                <div className="s">Home, over ons, contact en eigen pagina's</div>
               </div>
               <span aria-hidden>›</span>
             </div>
