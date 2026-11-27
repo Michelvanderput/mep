@@ -19,7 +19,13 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 async function init() {
-  const [info, hours, menus] = await Promise.all([mep.info(), mep.hours(), mep.menus()]);
+  const [info, hours, menus, announcements, specials] = await Promise.all([
+    mep.info(),
+    mep.hours(),
+    mep.menus(),
+    mep.announcements(),
+    mep.specials(),
+  ]);
   document.title = `${info.name} · ${info.type === "restaurant" ? "Restaurant" : info.type}`;
   $("name").textContent = info.name;
 
@@ -38,6 +44,18 @@ async function init() {
     .join("<br>");
 
   renderMenus(menus);
+
+  const banner = $("banner");
+  banner.hidden = announcements.length === 0;
+  banner.innerHTML = announcements.map((a) => esc(a.text)).join(" · ");
+
+  $("specials").hidden = specials.length === 0;
+  $("specials-list").innerHTML = specials
+    .map(
+      (x) =>
+        `<li><div class="body"><div class="line"><b>${esc(x.name)}</b>${x.priceCents !== null ? `<span class="price">${formatPrice(x.priceCents)}</span>` : ""}</div>${x.description ? `<p>${esc(x.description)}</p>` : ""}</div></li>`,
+    )
+    .join("");
 }
 
 function renderBadge(hours: Hours) {

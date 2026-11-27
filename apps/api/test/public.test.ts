@@ -66,7 +66,8 @@ describe("publieke API", () => {
     });
     expect(info.status).toBe(200);
     expect(info.headers.get("access-control-allow-origin")).toBe("*");
-    expect(info.headers.get("cache-control")).toContain("s-maxage");
+    expect(info.headers.get("vercel-cdn-cache-control")).toContain("s-maxage");
+    expect(info.headers.get("cache-control")).toContain("max-age=0");
     expect(await info.json()).toMatchObject({ name: "De Haven", timezone: "Europe/Amsterdam" });
 
     const hours = await (await app.request("/public/haven/hours")).json();
@@ -85,5 +86,33 @@ describe("publieke API", () => {
     expect((await app.request("/public/nope/menus")).status).toBe(404);
     await db.update(tenants).set({ status: "suspended" });
     expect((await app.request("/public/haven/info")).status).toBe(404);
+  });
+});
+
+describe("meldingen en specials", () => {
+  test("alleen wat vandaag geldt komt op de site", async () => {
+    const { announcements, specials } = await import("@mep/db");
+    const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Amsterdam" });
+    const day = (n: number) =>
+      new Date(Date.now() + n * 86_400_000).toLocaleDateString("sv-SE", {
+        timeZone: "Europe/Amsterdam",
+      });
+    await db.insert(announcements).values([
+      { tenantId, text: "Vandaag gesloten", startsOn: today, endsOn: today },
+      { tenantId, text: "Zonder einddatum" },
+      { tenantId, text: "Verlopen", endsOn: day(-1) },
+      { tenantId, text: "Toekomst", startsOn: day(2) },
+    ]);
+    await db.insert(specials).values([
+      { tenantId, name: "Dagsoep", priceCents: 750, startsOn: today, endsOn: today },
+      { tenantId, name: "Gisteren", startsOn: day(-1), endsOn: day(-1) },
+    ]);
+    const a = await (await app.request("/public/haven/announcements")).json();
+    expect(a.announcements.map((x: { text: string }) => x.text).sort()).toEqual([
+      "Vandaag gesloten",
+      "Zonder einddatum",
+    ]);
+    const s = await (await app.request("/public/haven/specials")).json();
+    expect(s.specials.map((x: { name: string }) => x.name)).toEqual(["Dagsoep"]);
   });
 });

@@ -1,3 +1,4 @@
+import { formatPrice, parsePriceToCents } from "@mep/schemas";
 import { type FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, useLoad } from "../api";
@@ -24,6 +25,10 @@ interface TodayData {
     exception: { closed: boolean; reason?: string | null } | null;
   };
   kitchenToday: Slot[];
+  live: {
+    announcements: { id: string; text: string; endsOn: string | null }[];
+    specials: { id: string; name: string; priceCents: number | null; endsOn: string }[];
+  };
   inbox: { newCount: number; recent: Submission[] } | null;
   checklist: {
     missingAllergens: number;
@@ -52,11 +57,24 @@ export const TYPE_NL: Record<string, string> = {
 
 export function Today() {
   const { slug, name, can, setInboxCount } = useTenant();
+  const toast = useToast();
   const { data, error, loading, reload } = useLoad(
     () => api<TodayData>(`/t/${slug}/today`),
     [slug],
   );
-  const [sheet, setSheet] = useState<"override" | "soldout" | null>(null);
+  const [sheet, setSheet] = useState<"override" | "soldout" | "special" | "announcement" | null>(
+    null,
+  );
+
+  async function removeLive(kind: "announcements" | "specials", id: string) {
+    try {
+      await api(`/t/${slug}/${kind}/${id}`, { method: "DELETE" });
+      toast(kind === "specials" ? "Special weggehaald" : "Melding weggehaald");
+      reload();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Weghalen mislukt", true);
+    }
+  }
 
   useEffect(() => {
     if (data?.inbox) setInboxCount(data.inbox.newCount);
@@ -110,16 +128,70 @@ export function Today() {
                     <span className="s">Uitverkocht melden</span>
                   </button>
                 )}
-                <button type="button" className="act" disabled>
-                  <b>Dagspecial</b>
-                  <span className="s">Binnenkort</span>
-                </button>
-                <button type="button" className="act" disabled>
-                  <b>Melding op site</b>
-                  <span className="s">Binnenkort</span>
-                </button>
+                {can("menu") && (
+                  <button type="button" className="act" onClick={() => setSheet("special")}>
+                    <b>Dagspecial</b>
+                    <span className="s">Tijdelijk gerecht</span>
+                  </button>
+                )}
+                {can("hours") && (
+                  <button type="button" className="act" onClick={() => setSheet("announcement")}>
+                    <b>Melding op site</b>
+                    <span className="s">Balk bovenaan</span>
+                  </button>
+                )}
               </div>
             </section>
+
+            {(data.live.announcements.length > 0 || data.live.specials.length > 0) && (
+              <section className="card" aria-label="Nu op je site">
+                <h2 className="t">Nu op je site</h2>
+                {data.live.announcements.map((a) => (
+                  <div className="item" key={a.id}>
+                    <div className="grow">
+                      <div className="t">{a.text}</div>
+                      <div className="s">
+                        Melding
+                        {a.endsOn
+                          ? ` · t/m ${a.endsOn.slice(8)}-${a.endsOn.slice(5, 7)}`
+                          : " · tot je hem weghaalt"}
+                      </div>
+                    </div>
+                    {can("hours") && (
+                      <button
+                        type="button"
+                        className="btn sm"
+                        aria-label={`Melding ${a.text} weghalen`}
+                        onClick={() => removeLive("announcements", a.id)}
+                      >
+                        Weghalen
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {data.live.specials.map((x) => (
+                  <div className="item" key={x.id}>
+                    <div className="grow">
+                      <div className="t">{x.name}</div>
+                      <div className="s">
+                        Dagspecial{x.priceCents !== null ? ` · ${formatPrice(x.priceCents)}` : ""} ·
+                        t/m {x.endsOn.slice(8)}-{x.endsOn.slice(5, 7)}
+                      </div>
+                    </div>
+                    {can("menu") && (
+                      <button
+                        type="button"
+                        className="btn sm"
+                        aria-label={`Special ${x.name} weghalen`}
+                        onClick={() => removeLive("specials", x.id)}
+                      >
+                        Weghalen
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </section>
+            )}
 
             {data.inbox && (
               <section className="card" aria-label="Nieuw in je inbox">
@@ -212,6 +284,24 @@ export function Today() {
       {sheet === "override" && data && (
         <OverrideSheet
           hasException={!!data.status.exception}
+          onClose={() => setSheet(null)}
+          onDone={() => {
+            setSheet(null);
+            reload();
+          }}
+        />
+      )}
+      {sheet === "special" && (
+        <SpecialSheet
+          onClose={() => setSheet(null)}
+          onDone={() => {
+            setSheet(null);
+            reload();
+          }}
+        />
+      )}
+      {sheet === "announcement" && (
+        <AnnouncementSheet
           onClose={() => setSheet(null)}
           onDone={() => {
             setSheet(null);
@@ -392,6 +482,197 @@ function SoldOutSheet({ onClose, onDone }: { onClose: () => void; onDone: () => 
         ))}
         {data && items.length === 0 && <p className="s">Geen gerechten gevonden.</p>}
       </div>
+    </Sheet>
+  );
+}
+
+const todayNl = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Amsterdam" });
+
+function AnnouncementSheet({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const { slug } = useTenant();
+  const toast = useToast();
+  const [text, setText] = useState("");
+  const [until, setUntil] = useState<"today" | "date" | "manual">("today");
+  const [date, setDate] = useState(todayNl());
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const endsOn = until === "today" ? todayNl() : until === "date" ? date : null;
+      await api(`/t/${slug}/announcements`, { method: "POST", body: { text, endsOn } });
+      toast("Melding staat op je site");
+      onDone();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Opslaan mislukt", true);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Sheet title="Melding op je site" onClose={onClose}>
+      <form className="stack" onSubmit={submit}>
+        <div className="field">
+          <label className="label" htmlFor="ann">
+            Wat wil je laten weten?
+          </label>
+          <textarea
+            id="ann"
+            className="input"
+            autoFocus
+            maxLength={200}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Bijvoorbeeld: Vandaag vanaf 18:00 geopend wegens een besloten feest"
+          />
+          <span className="hint">{200 - text.length} tekens over</span>
+        </div>
+        <div className="chips" role="group" aria-label="Tot wanneer">
+          <button
+            type="button"
+            className="chip"
+            aria-pressed={until === "today"}
+            onClick={() => setUntil("today")}
+          >
+            Alleen vandaag
+          </button>
+          <button
+            type="button"
+            className="chip"
+            aria-pressed={until === "date"}
+            onClick={() => setUntil("date")}
+          >
+            Tot een datum
+          </button>
+          <button
+            type="button"
+            className="chip"
+            aria-pressed={until === "manual"}
+            onClick={() => setUntil("manual")}
+          >
+            Tot ik hem weghaal
+          </button>
+        </div>
+        {until === "date" && (
+          <input
+            className="input"
+            type="date"
+            aria-label="Tot en met"
+            min={todayNl()}
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+        )}
+        <button type="submit" className="btn primary block" disabled={busy || !text.trim()}>
+          Plaatsen
+        </button>
+      </form>
+    </Sheet>
+  );
+}
+
+function SpecialSheet({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const { slug } = useTenant();
+  const toast = useToast();
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [price, setPrice] = useState("");
+  const [days, setDays] = useState<"today" | "week">("today");
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    const cents = price.trim() ? parsePriceToCents(price) : null;
+    if (price.trim() && cents === null) return toast("Vul een prijs in zoals 8,50", true);
+    setBusy(true);
+    try {
+      const start = todayNl();
+      const end =
+        days === "today"
+          ? start
+          : new Date(Date.now() + 6 * 86_400_000).toLocaleDateString("sv-SE", {
+              timeZone: "Europe/Amsterdam",
+            });
+      await api(`/t/${slug}/specials`, {
+        method: "POST",
+        body: { name, description, priceCents: cents, startsOn: start, endsOn: end },
+      });
+      toast(`${name} staat op je site`);
+      onDone();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Opslaan mislukt", true);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Sheet title="Dagspecial" onClose={onClose}>
+      <form className="stack" onSubmit={submit}>
+        <div className="field">
+          <label className="label" htmlFor="sn">
+            Naam
+          </label>
+          <input
+            id="sn"
+            className="input"
+            autoFocus
+            maxLength={120}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Bijvoorbeeld: Dagsoep tomaat"
+          />
+        </div>
+        <div className="field">
+          <label className="label" htmlFor="sd">
+            Omschrijving (optioneel)
+          </label>
+          <input
+            id="sd"
+            className="input"
+            maxLength={500}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label className="label" htmlFor="sp">
+            Prijs (optioneel)
+          </label>
+          <input
+            id="sp"
+            className="input"
+            inputMode="decimal"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            placeholder="8,50"
+          />
+        </div>
+        <div className="chips" role="group" aria-label="Hoe lang">
+          <button
+            type="button"
+            className="chip"
+            aria-pressed={days === "today"}
+            onClick={() => setDays("today")}
+          >
+            Alleen vandaag
+          </button>
+          <button
+            type="button"
+            className="chip"
+            aria-pressed={days === "week"}
+            onClick={() => setDays("week")}
+          >
+            Hele week
+          </button>
+        </div>
+        <span className="hint">
+          Controleer de allergenen bij de bediening: die staan niet bij een special.
+        </span>
+        <button type="submit" className="btn primary block" disabled={busy || !name.trim()}>
+          Plaatsen
+        </button>
+      </form>
     </Sheet>
   );
 }

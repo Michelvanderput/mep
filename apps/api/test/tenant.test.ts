@@ -210,3 +210,51 @@ describe("inbox", () => {
     expect(after.counts).toEqual({ in_progress: 1 });
   });
 });
+
+describe("meldingen en specials (beheer)", () => {
+  test("aanmaken, in /today zien, verwijderen; rechten per rol", async () => {
+    const owner = await addMember("sanne@example.nl", "owner");
+    const kitchen = await addMember("lotte@example.nl", "kitchen");
+    const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Amsterdam" });
+
+    expect(
+      (
+        await send(
+          "POST",
+          "/t/haven/announcements",
+          { text: "Gesloten wegens ziekte", endsOn: today },
+          owner,
+        )
+      ).status,
+    ).toBe(201);
+    expect((await send("POST", "/t/haven/announcements", { text: "x" }, kitchen)).status).toBe(403); // keuken: geen meldingen
+    expect((await send("POST", "/t/haven/announcements", { text: "" }, owner)).status).toBe(400);
+
+    const sp = await send(
+      "POST",
+      "/t/haven/specials",
+      { name: "Dagsoep", priceCents: 750, startsOn: today, endsOn: today },
+      kitchen,
+    );
+    expect(sp.status).toBe(201); // keuken mag specials
+    expect(
+      (
+        await send(
+          "POST",
+          "/t/haven/specials",
+          { name: "Fout", startsOn: today, endsOn: "2000-01-01" },
+          owner,
+        )
+      ).status,
+    ).toBe(400);
+
+    const t = await (await send("GET", "/t/haven/today", undefined, owner)).json();
+    expect(t.live.announcements).toHaveLength(1);
+    expect(t.live.specials).toHaveLength(1);
+
+    await send("DELETE", `/t/haven/specials/${t.live.specials[0].id}`, undefined, owner);
+    await send("DELETE", `/t/haven/announcements/${t.live.announcements[0].id}`, undefined, owner);
+    const after = await (await send("GET", "/t/haven/today", undefined, owner)).json();
+    expect(after.live).toEqual({ announcements: [], specials: [] });
+  });
+});

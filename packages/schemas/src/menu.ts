@@ -93,3 +93,28 @@ export const overrideTodaySchema = z.object({
     .optional(),
   reason: z.string().trim().max(120).optional(),
 });
+
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+export const announcementInputSchema = z.object({
+  text: z.string().trim().min(1, "Schrijf een korte melding").max(200),
+  /** Leeg = vanaf nu. */
+  startsOn: isoDate.nullable().default(null),
+  /** Leeg = tot je hem zelf weghaalt. */
+  endsOn: isoDate.nullable().default(null),
+});
+
+export const specialInputSchema = z
+  .object({
+    name: z.string().trim().min(1, "Geef de special een naam").max(120),
+    description: z.string().trim().max(500).default(""),
+    priceCents: z.number().int().min(0).max(1_000_000).nullable().default(null),
+    mediaId: z.string().uuid().nullable().default(null),
+    startsOn: isoDate,
+    endsOn: isoDate,
+  })
+  .refine((s) => s.endsOn >= s.startsOn, "De einddatum ligt voor de startdatum");
+
+/** Is een periode (JJJJ-MM-DD, grenzen inclusief, null = onbegrensd) vandaag actief? */
+export const isActiveOn = (today: string, startsOn: string | null, endsOn: string | null) =>
+  (!startsOn || startsOn <= today) && (!endsOn || today <= endsOn);

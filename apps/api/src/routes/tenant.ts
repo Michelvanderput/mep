@@ -1,5 +1,6 @@
 import { zValidator } from "@hono/zod-validator";
 import {
+  announcements,
   auditLog,
   type Database,
   mediaAssets,
@@ -9,12 +10,15 @@ import {
   menus,
   openingExceptions,
   openingHours,
+  specials,
   submissions,
   tenants,
 } from "@mep/db";
 import {
+  announcementInputSchema,
   computeOpenStatus,
   exceptionInputSchema,
+  isActiveOn,
   itemInputSchema,
   localParts,
   MAX_UPLOAD_BYTES,
@@ -25,6 +29,7 @@ import {
   type Role,
   slotSchema,
   soldOutSchema,
+  specialInputSchema,
   submissionPatchSchema,
   type WeekSchedule,
   weekScheduleSchema,
@@ -143,12 +148,28 @@ export function tenantRoutes(db: Database, storage: Storage) {
     }
 
     const { date } = localParts(now, tenant.timezone);
+    const [allAnn, allSpecials] = await Promise.all([
+      db
+        .select()
+        .from(announcements)
+        .where(eq(announcements.tenantId, tenant.id))
+        .orderBy(desc(announcements.createdAt)),
+      db
+        .select()
+        .from(specials)
+        .where(eq(specials.tenantId, tenant.id))
+        .orderBy(asc(specials.startsOn)),
+    ]);
     const upcoming = hours.exceptions.filter((e) => e.date >= date);
     return c.json({
       tenant: { name: tenant.name, slug: tenant.slug, modules: tenant.modules },
       role,
       status,
       kitchenToday: kitchen.todaySlots,
+      live: {
+        announcements: allAnn.filter((a) => isActiveOn(date, a.startsOn, a.endsOn)),
+        specials: allSpecials.filter((x) => isActiveOn(date, x.startsOn, x.endsOn)),
+      },
       inbox,
       checklist: {
         missingAllergens,
@@ -464,6 +485,51 @@ export function tenantRoutes(db: Database, storage: Storage) {
       .returning();
     if (!item) return c.json({ error: "Gerecht niet gevonden" }, 404);
     await audit(c, soldOut ? "menu.item.soldout" : "menu.item.available", item.id);
+    return c.json({ ok: true });
+  });
+
+  // --------------------------- Meldingen ---------------------------
+  r.post(
+    "/announcements",
+    need("hours"),
+    zValidator("json", announcementInputSchema),
+    async (c) => {
+      const tenant = c.get("tenant");
+      const b = c.req.valid("json");
+      const [row] = await db
+        .insert(announcements)
+        .values({ tenantId: tenant.id, ...b })
+        .returning();
+      await audit(c, "announcement.create", row?.id);
+      return c.json({ announcement: row }, 201);
+    },
+  );
+
+  r.delete("/announcements/:id", need("hours"), async (c) => {
+    const tenant = c.get("tenant");
+    await db
+      .delete(announcements)
+      .where(and(eq(announcements.id, c.req.param("id")), eq(announcements.tenantId, tenant.id)));
+    return c.json({ ok: true });
+  });
+
+  // --------------------------- Dagspecials ---------------------------
+  r.post("/specials", need("menu"), zValidator("json", specialInputSchema), async (c) => {
+    const tenant = c.get("tenant");
+    const b = c.req.valid("json");
+    const [row] = await db
+      .insert(specials)
+      .values({ tenantId: tenant.id, ...b, mediaId: await ownedMediaId(tenant.id, b.mediaId) })
+      .returning();
+    await audit(c, "special.create", row?.id);
+    return c.json({ special: row }, 201);
+  });
+
+  r.delete("/specials/:id", need("menu"), async (c) => {
+    const tenant = c.get("tenant");
+    await db
+      .delete(specials)
+      .where(and(eq(specials.id, c.req.param("id")), eq(specials.tenantId, tenant.id)));
     return c.json({ ok: true });
   });
 

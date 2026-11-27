@@ -1,5 +1,13 @@
-import { type Database, menuItems, menuSections, menus, tenants } from "@mep/db";
-import { computeOpenStatus, localParts, mediaPath } from "@mep/schemas";
+import {
+  announcements,
+  type Database,
+  menuItems,
+  menuSections,
+  menus,
+  specials,
+  tenants,
+} from "@mep/db";
+import { computeOpenStatus, isActiveOn, localParts, mediaPath } from "@mep/schemas";
 import { and, asc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
@@ -27,7 +35,10 @@ export function publicRoutes(db: Database) {
       c.set("tenant", tenant);
       await next();
       if (c.req.method === "GET" && c.res.ok) {
-        c.header("cache-control", "public, s-maxage=60, stale-while-revalidate=300");
+        // De CDN mag 60 s cachen (en daarna kort verouderd serveren); bezoekersbrowsers controleren altijd,
+        // anders blijft een weggehaalde melding nog minuten zichtbaar.
+        c.header("vercel-cdn-cache-control", "s-maxage=60, stale-while-revalidate=300");
+        c.header("cache-control", "public, max-age=0, must-revalidate");
       }
     }),
   );
@@ -109,6 +120,41 @@ export function publicRoutes(db: Database) {
               })),
           })),
       })),
+    });
+  });
+
+  // Alleen wat vandaag geldt; de site hoeft niet zelf te filteren op datum.
+  r.get("/announcements", async (c) => {
+    const t = c.get("tenant");
+    const { date } = localParts(new Date(), t.timezone);
+    const rows = await db.select().from(announcements).where(eq(announcements.tenantId, t.id));
+    return c.json({
+      announcements: rows
+        .filter((a) => isActiveOn(date, a.startsOn, a.endsOn))
+        .map((a) => ({ id: a.id, text: a.text, endsOn: a.endsOn })),
+    });
+  });
+
+  r.get("/specials", async (c) => {
+    const t = c.get("tenant");
+    const { date } = localParts(new Date(), t.timezone);
+    const rows = await db
+      .select()
+      .from(specials)
+      .where(eq(specials.tenantId, t.id))
+      .orderBy(asc(specials.startsOn));
+    return c.json({
+      specials: rows
+        .filter((x) => isActiveOn(date, x.startsOn, x.endsOn))
+        .map((x) => ({
+          id: x.id,
+          name: x.name,
+          description: x.description,
+          priceCents: x.priceCents,
+          startsOn: x.startsOn,
+          endsOn: x.endsOn,
+          photo: x.mediaId ? { id: x.mediaId, path: mediaPath(x.mediaId, 800) } : null,
+        })),
     });
   });
 

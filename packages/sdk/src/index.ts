@@ -57,6 +57,21 @@ export interface Menu {
   sections: MenuSection[];
 }
 
+export interface Announcement {
+  id: string;
+  text: string;
+  endsOn: string | null;
+}
+export interface Special {
+  id: string;
+  name: string;
+  description: string;
+  priceCents: number | null;
+  startsOn: string;
+  endsOn: string;
+  photo: { id: string; path: string } | null;
+}
+
 export interface FormInput {
   type?: "contact" | "group" | "job";
   name: string;
@@ -95,6 +110,12 @@ export function createClient(opts: MepClientOptions) {
      * Rekent open/dicht zelf uit de uren, zodat een gecachte of statisch gebouwde pagina
      * toch de actuele status toont. Gebruik in de browser met `setInterval` voor een live badge.
      */
+    /** Meldingen die vandaag gelden (bv. voor een balk bovenaan de site). */
+    announcements: async () =>
+      (await get<{ announcements: Announcement[] }>("/announcements")).announcements,
+    /** Dagspecials die vandaag gelden. */
+    specials: async () => (await get<{ specials: Special[] }>("/specials")).specials,
+
     openStatus(hours: Hours, now: Date = new Date()): OpenStatus {
       return computeOpenStatus({
         schedule: hours.venue,

@@ -291,3 +291,42 @@ export const submissions = pgTable(
   },
   (t) => [index("submissions_tenant_status_idx").on(t.tenantId, t.status, t.createdAt)],
 );
+
+// ---------------------------------------------------------------------------
+// Meldingen en dagspecials
+// ---------------------------------------------------------------------------
+
+/** Mededelingenbalk op de site ("Vandaag gesloten wegens ziekte"). Datums in de tijdzone van de zaak. */
+export const announcements = pgTable(
+  "announcements",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    text: text("text").notNull(),
+    startsOn: text("starts_on"),
+    endsOn: text("ends_on"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("announcements_tenant_idx").on(t.tenantId)],
+);
+
+/** Tijdelijke gerechten (dagspecial, weekmenu) buiten de vaste kaart. */
+export const specials = pgTable(
+  "specials",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    priceCents: integer("price_cents"),
+    mediaId: uuid("media_id").references(() => mediaAssets.id, { onDelete: "set null" }),
+    startsOn: text("starts_on").notNull(),
+    endsOn: text("ends_on").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("specials_tenant_idx").on(t.tenantId)],
+);

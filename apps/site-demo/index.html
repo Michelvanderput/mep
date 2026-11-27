@@ -9,12 +9,14 @@
     <title>Voorbeeldsite</title>
   </head>
   <body>
+    <div id="banner" class="banner" role="status" hidden></div>
     <header class="top">
       <h1 id="name">…</h1>
       <p id="badge" class="badge" role="status" aria-live="polite"></p>
     </header>
     <main>
       <section id="hours" aria-labelledby="h-hours"><h2 id="h-hours">Openingstijden</h2><dl id="hours-list"></dl><p id="exceptions" class="note"></p></section>
+      <section id="specials" aria-labelledby="h-spec" hidden><h2 id="h-spec">Vandaag speciaal</h2><ul id="specials-list" class="items"></ul></section>
       <section id="menu" aria-labelledby="h-menu"><h2 id="h-menu">Menukaart</h2><div id="menu-tabs" class="tabs" role="tablist"></div><div id="menu-body"></div>
         <p class="note">Heb je een allergie? Vraag het de bediening, ook als er hieronder niets bij staat.</p></section>
       <section id="contact" aria-labelledby="h-contact"><h2 id="h-contact">Contact of groepsaanvraag</h2>
