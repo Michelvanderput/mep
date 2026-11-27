@@ -1,0 +1,265 @@
+<title>MEP Wireframes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: lage-fideliteit wireframes, vijf telefoons naast elkaar met toelichting eronder. Grijstinten + één accent. */
+:root{
+  --bg:#f3f4f2; --sheet:#ffffff; --ink:#1d2321; --mute:#68716d; --line:#d5d9d6; --fill:#e7eae8; --fill2:#dde1de;
+  --accent:#1f6f5c; --accent-ink:#ffffff; --warn:#b45309; --note:#fff6d6; --note-ink:#4a3b05;
+  --font:'Inter',system-ui,sans-serif; --display:'Space Grotesk','Inter',system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141917; --sheet:#1d2421; --ink:#e8ece9; --mute:#9aa6a0; --line:#34403b; --fill:#2a332f; --fill2:#33403a;
+  --accent:#4fb89c; --accent-ink:#06231b; --warn:#f0a04b; --note:#3b3310; --note-ink:#f3e7b0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141917; --sheet:#1d2421; --ink:#e8ece9; --mute:#9aa6a0; --line:#34403b; --fill:#2a332f; --fill2:#33403a;
+  --accent:#4fb89c; --accent-ink:#06231b; --warn:#f0a04b; --note:#3b3310; --note-ink:#f3e7b0; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);padding-block:32px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+*{box-sizing:border-box}
+.wrap{max-width:1500px;margin:0 auto;display:flex;flex-direction:column;gap:32px}
+h1{font:700 1.9rem/1.1 var(--display);margin:0;text-wrap:balance}
+.intro{max-width:70ch;color:var(--mute);line-height:1.55;margin:8px 0 0;font-size:.95rem}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:.8rem;color:var(--mute);margin-top:14px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.screens{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:36px 28px;align-items:start}
+.screen{display:flex;flex-direction:column;gap:14px;min-width:0}
+.screen h2{font:700 1.1rem var(--display);margin:0}
+.screen h2 small{display:block;font:400 .8rem var(--font);color:var(--mute);margin-top:2px}
+.phone{width:100%;max-width:340px;margin:0 auto;background:var(--sheet);border:2px solid var(--ink);border-radius:30px;overflow:hidden;
+  display:flex;flex-direction:column;height:640px;position:relative}
+.status{display:flex;justify-content:space-between;font-size:.7rem;color:var(--mute);padding:10px 18px 4px}
+.top{display:flex;align-items:center;gap:10px;padding:8px 16px 10px;border-bottom:1px solid var(--line)}
+.top b{font:700 1.05rem var(--display);flex:1}
+.avatar{width:28px;height:28px;border-radius:50%;background:var(--fill2)}
+.body{flex:1;overflow:hidden;padding:14px 16px;display:flex;flex-direction:column;gap:12px;position:relative}
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--line);padding:8px 4px 12px;background:var(--sheet)}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:.62rem;color:var(--mute);position:relative}
+.tab i{width:20px;height:20px;border-radius:6px;background:var(--fill2)}
+.tab.on{color:var(--accent);font-weight:600}.tab.on i{background:var(--accent)}
+.badge{position:absolute;top:-4px;right:calc(50% - 20px);background:var(--warn);color:#fff;border-radius:99px;font-size:.55rem;padding:1px 5px;font-weight:600}
+.card{border:1px solid var(--line);border-radius:14px;padding:12px;background:var(--sheet);display:flex;flex-direction:column;gap:8px}
+.card.hero{background:var(--fill)}
+.row{display:flex;align-items:center;gap:10px;min-width:0}
+.grow{flex:1;min-width:0}
+.t{font-weight:600;font-size:.88rem}.s{font-size:.74rem;color:var(--mute)}
+.ph{background:var(--fill);border-radius:8px;border:1px dashed var(--line);display:grid;place-items:center;font-size:.65rem;color:var(--mute)}
+.btn{border:1.5px solid var(--ink);border-radius:12px;padding:10px 12px;font-size:.82rem;font-weight:600;text-align:center;background:transparent;color:var(--ink)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.sm{padding:6px 10px;font-size:.72rem;border-radius:10px}
+.chip{border:1.5px solid var(--line);border-radius:99px;padding:5px 11px;font-size:.74rem;white-space:nowrap;color:var(--mute)}
+.chip.on{background:var(--ink);color:var(--sheet);border-color:var(--ink)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chips.scroll{flex-wrap:nowrap;overflow:hidden}
+.tog{width:38px;height:22px;border-radius:99px;background:var(--fill2);position:relative;flex:none}
+.tog::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--sheet);border:1px solid var(--line)}
+.tog.on{background:var(--accent)}.tog.on::after{left:19px;border-color:transparent}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.act{border:1px solid var(--line);border-radius:14px;padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:.7rem;font-weight:600;text-align:center}
+.act i{width:26px;height:26px;border-radius:8px;background:var(--fill2)}
+.act.key{border-color:var(--accent)}.act.key i{background:var(--accent)}
+.label{font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);font-weight:600}
+.field{display:flex;flex-direction:column;gap:4px}
+.input{border:1.5px solid var(--line);border-radius:10px;padding:9px 10px;font-size:.82rem;color:var(--ink);min-height:38px;background:var(--sheet)}
+.input.area{min-height:62px}
+.sticky{border-top:1px solid var(--line);padding:10px 16px 14px;display:flex;gap:8px;background:var(--sheet)}
+.fab{position:absolute;right:14px;bottom:14px;width:48px;height:48px;border-radius:16px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-size:1.5rem;font-weight:500}
+.item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.item:last-child{border:0}
+.grip{color:var(--mute);letter-spacing:-2px;font-size:.9rem}
+.pill{font-size:.6rem;padding:2px 7px;border-radius:99px;background:var(--fill2);font-weight:600;color:var(--mute)}
+.pill.warn{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.pill.ok{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent)}
+.sec{display:flex;align-items:center;justify-content:space-between;padding:6px 0}
+.off{opacity:.45}.strike{text-decoration:line-through}
+.times{display:flex;align-items:center;gap:4px;font-size:.74rem}
+.times span{border:1px solid var(--line);border-radius:7px;padding:3px 6px}
+.num{position:absolute;z-index:2;width:18px;height:18px;border-radius:50%;background:var(--warn);color:#fff;font:700 .62rem var(--font);display:grid;place-items:center;right:8px;top:8px}
+.has{position:relative}
+.notes{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;max-width:340px;margin-inline:auto;width:100%}
+.notes li{display:flex;gap:9px;font-size:.8rem;line-height:1.45;color:var(--ink)}
+.notes b.n{flex:none;width:18px;height:18px;border-radius:50%;background:var(--warn);color:#fff;font:700 .62rem var(--font);display:grid;place-items:center;margin-top:2px}
+.test{background:var(--note);color:var(--note-ink);border-radius:12px;padding:12px 14px;font-size:.8rem;line-height:1.45;max-width:340px;margin-inline:auto;width:100%}
+.test b{display:block;margin-bottom:2px}
+.foot{border-top:1px solid var(--line);padding-top:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;font-size:.85rem;line-height:1.5;color:var(--mute)}
+.foot h3{font:700 .95rem var(--display);color:var(--ink);margin:0 0 6px}
+.foot ul{margin:0;padding-left:18px}
+@media (prefers-reduced-motion:no-preference){.btn,.act{transition:transform .12s}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Mis en place — vijf kernschermen</h1>
+    <p class="intro">Wireframes voor de beheeromgeving, ontworpen voor een telefoon in één hand. Lage fideliteit: indeling, volgorde en gedrag staan vast, kleur en vormgeving nog niet. Voorbeeldzaak: Bistro De Haven.</p>
+    <div class="legend">
+      <span><i class="dot"></i> Hoofdactie</span>
+      <span><b style="color:var(--warn)">①</b> Nummer verwijst naar de toelichting onder het scherm</span>
+      <span>Gestippeld vlak = foto</span>
+    </div>
+  </header>
+
+  <div class="screens">
+
+  <!-- 1 VANDAAG -->
+  <section class="screen">
+    <h2>1. Vandaag<small>Startscherm. Antwoord op: "Klopt alles voor vanavond?"</small></h2>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>●●●</span></div>
+      <div class="top"><b>Bistro De Haven</b><div class="avatar"></div></div>
+      <div class="body">
+        <div class="card hero has"><span class="num">1</span>
+          <div class="row"><div class="grow"><div class="t">Nu gesloten · opent 12:00</div><div class="s">Vandaag 12:00–22:00 · keuken tot 21:00</div></div><span class="pill ok">Live</span></div>
+          <div class="btn sm">Vandaag afwijkend of dicht</div>
+        </div>
+        <div class="has"><span class="num">2</span><div class="label" style="margin-bottom:6px">Snel regelen</div>
+          <div class="grid3">
+            <div class="act key"><i></i>Gerecht op</div>
+            <div class="act"><i></i>Dagspecial</div>
+            <div class="act"><i></i>Melding op site</div>
+          </div></div>
+        <div class="card has"><span class="num">3</span>
+          <div class="row"><div class="t grow">Nieuw in je inbox</div><span class="pill warn">3</span></div>
+          <div class="item"><div class="grow"><div class="t">Groep 14 pers. · 12 mei</div><div class="s">Verjaardag · Jan de Vries</div></div><span class="s">10 min</span></div>
+          <div class="item"><div class="grow"><div class="t">Vraag over glutenvrij</div><div class="s">Contactformulier</div></div><span class="s">2 u</span></div>
+        </div>
+        <div class="card has"><span class="num">4</span>
+          <div class="t">Nog even afmaken</div>
+          <div class="row"><span class="s grow">3 gerechten zonder allergenen</span><span class="s">›</span></div>
+          <div class="row"><span class="s grow">Kerst: openingstijden nog niet ingevuld</span><span class="s">›</span></div>
+        </div>
+      </div>
+      <div class="tabs"><div class="tab on"><i></i>Vandaag</div><div class="tab"><i></i>Kaart</div><div class="tab"><i></i>Tijden</div><div class="tab"><i></i>Inbox<span class="badge">3</span></div><div class="tab"><i></i>Meer</div></div>
+    </div>
+    <ol class="notes" style="list-style:none">
+      <li><b class="n">1</b><span>Eén blik: open of dicht. De knop zet vandaag met één tik op dicht of andere tijden, zonder het weekschema aan te raken.</span></li>
+      <li><b class="n">2</b><span>De drie handelingen die de keuken en bediening het vaakst doen. "Gerecht op" is de opvallendste.</span></li>
+      <li><b class="n">3</b><span>Nieuwe aanvragen met leeftijd. Tik opent de inbox op dat bericht.</span></li>
+      <li><b class="n">4</b><span>Controlelijst uit de gegevens zelf, bijvoorbeeld een ontbrekend allergeen of een feestdag zonder tijden.</span></li>
+    </ol>
+    <div class="test"><b>Testtaak voor een ondernemer</b>"Je bent vanavond een uur eerder dicht. Pas dat aan."</div>
+  </section>
+
+  <!-- 2 KAART -->
+  <section class="screen">
+    <h2>2. Kaart<small>Alle gerechten van één menukaart, met "op = op" binnen handbereik.</small></h2>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>●●●</span></div>
+      <div class="top"><b>Kaart</b><span class="s">Voorbeeld ›</span></div>
+      <div class="body" style="gap:10px">
+        <div class="chips scroll has"><span class="num" style="right:0;top:-6px">1</span><span class="chip on">Diner</span><span class="chip">Lunch</span><span class="chip">Dranken</span><span class="chip">Wijn</span></div>
+        <div class="input has" style="color:var(--mute)"><span class="num">2</span>Zoek een gerecht…</div>
+        <div class="sec"><span class="t">Voorgerechten <span class="s">· 4</span></span><span class="s">⋯</span></div>
+        <div class="item has"><span class="grip">⋮⋮</span><div class="ph" style="width:38px;height:38px">foto</div><div class="grow"><div class="t">Gerookte paling</div><div class="s">€ 14,50 · <span class="pill">Glutenvrij</span></div></div><div class="tog on"></div></div>
+        <div class="item has off"><span class="num" style="top:-2px;right:48px">3</span><span class="grip">⋮⋮</span><div class="ph" style="width:38px;height:38px">foto</div><div class="grow"><div class="t strike">Tartaar van zalm</div><div class="s"><span class="pill warn">Op tot morgen</span></div></div><div class="tog"></div></div>
+        <div class="item"><span class="grip">⋮⋮</span><div class="ph" style="width:38px;height:38px">foto</div><div class="grow"><div class="t">Pompoensoep</div><div class="s">€ 8,50 · <span class="pill">Vegan</span></div></div><div class="tog on"></div></div>
+        <div class="sec"><span class="t">Hoofdgerechten <span class="s">· 6</span></span><span class="s">⌄</span></div>
+        <div class="sec"><span class="t">Nagerechten <span class="s">· 3</span></span><span class="s">⌄</span></div>
+        <div class="fab has"><span class="num" style="right:-6px;top:-6px">4</span>+</div>
+      </div>
+      <div class="tabs"><div class="tab"><i></i>Vandaag</div><div class="tab on"><i></i>Kaart</div><div class="tab"><i></i>Tijden</div><div class="tab"><i></i>Inbox</div><div class="tab"><i></i>Meer</div></div>
+    </div>
+    <ol class="notes" style="list-style:none">
+      <li><b class="n">1</b><span>Meerdere kaarten (diner, lunch, dranken) als horizontale keuze. Nieuwe kaart staat achteraan.</span></li>
+      <li><b class="n">2</b><span>Zoeken over alle gerechten. Handig als de kaart groot wordt.</span></li>
+      <li><b class="n">3</b><span>De schakelaar is "op = op". Uit betekent uitverkocht: het gerecht is grijs, op de site verborgen of doorgestreept, en komt vanzelf terug op de gekozen dag.</span></li>
+      <li><b class="n">4</b><span>Plusknop voegt een gerecht toe aan de geopende categorie. Vasthouden en slepen op ⋮⋮ wijzigt de volgorde.</span></li>
+    </ol>
+    <div class="test"><b>Testtaak</b>"De zalm is op. Zet hem uit voor vandaag."</div>
+  </section>
+
+  <!-- 3 GERECHT BEWERKEN -->
+  <section class="screen">
+    <h2>3. Gerecht bewerken<small>Alles over één gerecht. Allergenen zijn een aanvinklijst, geen vrije tekst.</small></h2>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>●●●</span></div>
+      <div class="top"><span class="s">‹ Kaart</span><b style="text-align:center">Gerecht</b><span class="pill ok">Concept</span></div>
+      <div class="body" style="gap:10px;overflow:hidden">
+        <div class="ph has" style="height:92px"><span class="num">1</span>Foto toevoegen of maken</div>
+        <div class="field"><span class="label">Naam</span><div class="input">Gerookte paling</div></div>
+        <div class="field"><span class="label">Omschrijving</span><div class="input area s">Met mierikswortelcrème, rode biet en geroosterd zuurdesembrood</div></div>
+        <div class="row has"><span class="num" style="right:-4px;top:-10px">2</span>
+          <div class="field grow"><span class="label">Prijs</span><div class="input">€ 14,50</div></div>
+          <div class="field grow"><span class="label">Categorie</span><div class="input">Voorgerechten</div></div></div>
+        <div class="field has"><span class="num" style="top:-4px">3</span><span class="label">Allergenen</span>
+          <div class="chips"><span class="chip on">Vis</span><span class="chip on">Gluten</span><span class="chip on">Melk</span><span class="chip">Ei</span><span class="chip">Noten</span><span class="chip">Soja</span><span class="chip">+ 8 meer</span></div></div>
+        <div class="field"><span class="label">Dieet</span>
+          <div class="chips"><span class="chip">Vegetarisch</span><span class="chip">Vegan</span><span class="chip">Glutenvrij</span></div></div>
+        <div class="row has"><span class="num" style="right:-4px;top:-6px">4</span><div class="grow"><div class="t">Beschikbaar</div><div class="s">Elke dag, hele kaart</div></div><span class="s">Aanpassen ›</span></div>
+      </div>
+      <div class="sticky has"><span class="num" style="top:-8px;right:12px">5</span><div class="btn grow">Voorbeeld</div><div class="btn pri grow">Publiceren</div></div>
+    </div>
+    <ol class="notes" style="list-style:none">
+      <li><b class="n">1</b><span>Foto direct met de camera. De app snijdt bij naar vaste verhoudingen en vraagt om een alt-tekst.</span></li>
+      <li><b class="n">2</b><span>Prijs accepteert 14,50 en 14.50. Bij glas en fles of klein en groot kom je via "meer prijzen".</span></li>
+      <li><b class="n">3</b><span>De 14 wettelijke allergenen als aanvinkknoppen, de meest gebruikte vooraan. Blijft het leeg, dan waarschuwt het Vandaag-scherm.</span></li>
+      <li><b class="n">4</b><span>Tijdsregels: alleen op bepaalde dagen, in een seizoen of tot een einddatum.</span></li>
+      <li><b class="n">5</b><span>"Voorbeeld" toont het gerecht zoals gasten het zien. Opslaan als concept kan ook door terug te gaan.</span></li>
+    </ol>
+    <div class="test"><b>Testtaak</b>"Voeg de dagsoep toe met een foto, en geef aan dat er selderij in zit."</div>
+  </section>
+
+  <!-- 4 OPENINGSTIJDEN -->
+  <section class="screen">
+    <h2>4. Openingstijden<small>Weekschema, keuken apart en uitzonderingen op één plek.</small></h2>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>●●●</span></div>
+      <div class="top"><b>Openingstijden</b></div>
+      <div class="body" style="gap:8px">
+        <div class="card hero has"><span class="num">1</span><div class="t">Zo ziet de site het nu</div><div class="s">Nu gesloten · opent vandaag om 12:00</div></div>
+        <div class="row has" style="justify-content:space-between"><span class="num" style="top:-6px;right:0">2</span><span class="label">Weekschema</span><div class="chips"><span class="chip on">Zaal</span><span class="chip">Keuken</span></div></div>
+        <div class="item"><span class="t" style="width:30px">Ma</span><div class="tog"></div><span class="s grow">Gesloten</span></div>
+        <div class="item"><span class="t" style="width:30px">Di</span><div class="tog on"></div><div class="times grow"><span>17:00</span>–<span>22:00</span></div></div>
+        <div class="item"><span class="t" style="width:30px">Wo</span><div class="tog on"></div><div class="times grow"><span>17:00</span>–<span>22:00</span></div></div>
+        <div class="item has"><span class="num" style="top:2px;right:0">3</span><span class="t" style="width:30px">Za</span><div class="tog on"></div><div class="times grow"><span>12:00</span>–<span>14:30</span><span>17:00</span>–<span>23:00</span></div></div>
+        <div class="row has" style="justify-content:space-between;margin-top:4px"><span class="num" style="top:-6px;right:34px">4</span><span class="label">Uitzonderingen</span><span class="btn sm">+ Toevoegen</span></div>
+        <div class="item"><div class="grow"><div class="t">1e Kerstdag</div><div class="s">25 dec · Gesloten</div></div><span class="pill">Feestdag</span></div>
+        <div class="item"><div class="grow"><div class="t">Zomersluiting</div><div class="s">2–16 aug · Gesloten</div></div><span class="pill warn">Binnenkort</span></div>
+      </div>
+      <div class="tabs"><div class="tab"><i></i>Vandaag</div><div class="tab"><i></i>Kaart</div><div class="tab on"><i></i>Tijden</div><div class="tab"><i></i>Inbox</div><div class="tab"><i></i>Meer</div></div>
+    </div>
+    <ol class="notes" style="list-style:none">
+      <li><b class="n">1</b><span>Voorbeeld van wat gasten lezen, zodat de ondernemer elke wijziging meteen controleert.</span></li>
+      <li><b class="n">2</b><span>Wissel tussen zaal en keuken. De keuken sluit vaak eerder dan de zaal.</span></li>
+      <li><b class="n">3</b><span>Een dag kan twee tijdvakken hebben (lunch en diner). Schakelaar uit betekent de hele dag gesloten.</span></li>
+      <li><b class="n">4</b><span>Uitzonderingen gaan voor het weekschema. Nederlandse feestdagen staan al klaar, met één tik op open, dicht of afwijkend. Verlopen uitzonderingen verdwijnen vanzelf.</span></li>
+    </ol>
+    <div class="test"><b>Testtaak</b>"Zet tweede paasdag op gesloten en de keuken op zaterdag tot 21:00."</div>
+  </section>
+
+  <!-- 5 INBOX -->
+  <section class="screen">
+    <h2>5. Inbox<small>Alle aanvragen uit alle formulieren, met een duidelijke status.</small></h2>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>●●●</span></div>
+      <div class="top"><b>Inbox</b><span class="s">Filter ⌄</span></div>
+      <div class="body" style="gap:10px">
+        <div class="chips has"><span class="num" style="right:0;top:-8px">1</span><span class="chip on">Nieuw 3</span><span class="chip">Bezig 2</span><span class="chip">Klaar</span></div>
+        <div class="card has" style="border-color:var(--accent)"><span class="num">2</span>
+          <div class="row"><span class="pill warn">Groep</span><span class="s grow">10 min geleden</span></div>
+          <div class="t">Jan de Vries · 14 personen</div>
+          <div class="s">Zaterdag 12 mei · Verjaardag · budget € 45 p.p.</div>
+          <div class="s">"Graag een vegetarisch en een glutenvrij menu."</div>
+          <div class="row has" style="margin-top:4px"><span class="num" style="top:-8px;right:-2px">3</span><div class="btn sm grow">Bel</div><div class="btn sm grow">Mail</div><div class="btn pri sm grow">Offerte</div></div>
+        </div>
+        <div class="card"><div class="row"><span class="pill">Contact</span><span class="s grow">2 u geleden</span></div><div class="t">Lisa Bakker</div><div class="s">"Hebben jullie ook glutenvrije desserts?"</div></div>
+        <div class="card"><div class="row"><span class="pill">Contact</span><span class="s grow">Gisteren</span></div><div class="t">Pieter Smit</div><div class="s">"Is er parkeergelegenheid vlakbij?"</div></div>
+        <div class="card"><div class="row"><span class="pill ok">Sollicitatie</span><span class="s grow">Gisteren</span></div><div class="t">Sam Jansen · Bediening</div><div class="s">CV bijgevoegd</div></div>
+      </div>
+      <div class="tabs"><div class="tab"><i></i>Vandaag</div><div class="tab"><i></i>Kaart</div><div class="tab"><i></i>Tijden</div><div class="tab on"><i></i>Inbox<span class="badge">3</span></div><div class="tab"><i></i>Meer</div></div>
+    </div>
+    <ol class="notes" style="list-style:none">
+      <li><b class="n">1</b><span>Status in drie stappen: nieuw, bezig, klaar. Een verwerkt bericht gaat naar Klaar en blijft daar tot de bewaartermijn verloopt.</span></li>
+      <li><b class="n">2</b><span>Het type bepaalt de kaart: groepsaanvragen tonen datum, aantal en budget, contactberichten alleen de tekst.</span></li>
+      <li><b class="n">3</b><span>Bellen en mailen openen de eigen apps van de telefoon. "Offerte" zet de status op bezig en onthoudt de notitie.</span></li>
+    </ol>
+    <div class="test"><b>Testtaak</b>"Er is een groepsaanvraag binnen. Markeer hem als in behandeling."</div>
+  </section>
+
+  </div>
+
+  <footer class="foot">
+    <div><h3>Vaste bouwstenen</h3><ul><li>Onderaan vijf tabs: Vandaag, Kaart, Tijden, Inbox, Meer</li><li>Eén hoofdactie per scherm, in het accent</li><li>Tikvlakken minimaal 44 px</li><li>Schakelaars en keuzeknoppen in plaats van typen</li></ul></div>
+    <div><h3>Onder "Meer"</h3><ul><li>Evenementen, nieuws, foto's, pagina's</li><li>Team en rollen, instellingen</li><li>Hulp en contact met de bouwer</li></ul></div>
+    <div><h3>Volgende stap: testen</h3><ul><li>Laat 2 of 3 ondernemers de testtaken doen op deze schermen, zonder uitleg</li><li>Let op waar ze aarzelen of verkeerd tikken</li><li>Pas daarna de beheer-UI bouwen</li></ul></div>
+  </footer>
+</div>
