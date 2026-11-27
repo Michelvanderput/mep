@@ -3,9 +3,11 @@ import { type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, useLoad } from "../api";
 import { ErrorBox, Sheet, Spinner, Switch, useToast } from "../components/ui";
+import { photoUrl } from "../photos";
 import { useTenant } from "./TenantShell";
 
 export interface MenuItemRow {
+  mediaId: string | null;
   id: string;
   name: string;
   description: string;
@@ -240,6 +242,18 @@ export function Menu() {
                                 ▼
                               </button>
                             </div>
+                          )}
+                          {item.mediaId ? (
+                            <img
+                              className="thumb"
+                              src={photoUrl(item.mediaId)}
+                              alt=""
+                              loading="lazy"
+                            />
+                          ) : (
+                            <span className="thumb empty" aria-hidden>
+                              foto
+                            </span>
                           )}
                           <Link className="main" to={`/t/${slug}/kaart/gerecht/${item.id}`}>
                             <div className="t">{item.name}</div>

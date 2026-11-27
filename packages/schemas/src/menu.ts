@@ -49,6 +49,8 @@ export const itemInputSchema = z.object({
   allergens: z.array(z.enum(ALLERGEN_IDS)).default([]),
   diets: z.array(z.enum(DIET_IDS)).default([]),
   sectionId: z.string().uuid().optional(),
+  /** Foto uit de mediabibliotheek; null = geen foto. */
+  mediaId: z.string().uuid().nullable().optional(),
 });
 export type ItemInput = z.infer<typeof itemInputSchema>;
 

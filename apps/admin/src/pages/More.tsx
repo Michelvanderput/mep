@@ -18,7 +18,7 @@ const SOON = [
 ];
 
 export function More() {
-  const { name, role, me } = useTenant();
+  const { slug, name, role, me, can } = useTenant();
   const navigate = useNavigate();
   return (
     <>
@@ -33,6 +33,21 @@ export function More() {
             {me.user.email} · {ROLE_NL[role]} bij {name}
           </div>
         </section>
+        {can("media") && (
+          <Link
+            to={`/t/${slug}/fotos`}
+            className="card"
+            style={{ textDecoration: "none", color: "inherit" }}
+          >
+            <div className="row">
+              <div className="grow">
+                <div className="t">Foto's</div>
+                <div className="s">Je fotobibliotheek, beschrijvingen en uitsnede</div>
+              </div>
+              <span aria-hidden>›</span>
+            </div>
+          </Link>
+        )}
         <section className="card" aria-label="Binnenkort">
           <div className="label">Binnenkort beschikbaar</div>
           {SOON.map((s) => (

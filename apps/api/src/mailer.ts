@@ -25,3 +25,17 @@ export function memoryMailer(): Mailer & { sent: Mail[] } {
     },
   };
 }
+
+/** Verstuurt via Resend (https://resend.com). Het afzenderdomein moet daar geverifieerd zijn. */
+export function resendMailer(apiKey: string, from: string): Mailer {
+  return {
+    async send(mail) {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+        body: JSON.stringify({ from, to: mail.to, subject: mail.subject, text: mail.text }),
+      });
+      if (!res.ok) throw new Error(`E-mail versturen mislukt (${res.status})`);
+    },
+  };
+}

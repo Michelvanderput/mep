@@ -10,6 +10,12 @@ export { schema };
 export type Database = PgDatabase<PgQueryResultHKT, typeof schema>;
 
 export function createDb(url: string): Database {
-  const client = postgres(url, { max: 10 });
+  // Op Vercel (serverless): 1 verbinding per instantie en geen prepared statements,
+  // zodat een gepoolde verbinding (Neon/pgbouncer) werkt.
+  const serverless = !!process.env.VERCEL;
+  const client = postgres(
+    url,
+    serverless ? { max: 1, prepare: false, idle_timeout: 20 } : { max: 10 },
+  );
   return drizzlePg(client, { schema });
 }

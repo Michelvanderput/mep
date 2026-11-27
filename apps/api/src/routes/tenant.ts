@@ -2,6 +2,7 @@ import { zValidator } from "@hono/zod-validator";
 import {
   auditLog,
   type Database,
+  mediaAssets,
   memberships,
   menuItems,
   menuSections,
@@ -16,6 +17,8 @@ import {
   exceptionInputSchema,
   itemInputSchema,
   localParts,
+  MAX_UPLOAD_BYTES,
+  mediaPatchSchema,
   nameSchema,
   orderSchema,
   overrideTodaySchema,
@@ -30,11 +33,13 @@ import { and, asc, count, desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { z } from "zod";
+import { InvalidImageError, processImage } from "../images";
+import type { Storage } from "../storage";
 import { type Area, can, type Env } from "../types";
 
 const EMPTY_WEEK: WeekSchedule = [[], [], [], [], [], [], []];
 
-export function tenantRoutes(db: Database) {
+export function tenantRoutes(db: Database, storage: Storage) {
   const r = new Hono<Env>();
 
   // Laad de zaak en controleer lidmaatschap (superadmin telt als eigenaar).
@@ -110,6 +115,17 @@ export function tenantRoutes(db: Database) {
     };
   };
 
+  /** Foto moet van dezelfde zaak zijn; anders wordt hij genegeerd (geen lek tussen zaken). */
+  const ownedMediaId = async (tenantId: string, id: string | null | undefined) => {
+    if (!id) return null;
+    const [m] = await db
+      .select({ id: mediaAssets.id })
+      .from(mediaAssets)
+      .where(and(eq(mediaAssets.id, id), eq(mediaAssets.tenantId, tenantId)))
+      .limit(1);
+    return m?.id ?? null;
+  };
+
   // --------------------------- Vandaag ---------------------------
   r.get("/today", need("today"), async (c) => {
     const tenant = c.get("tenant");
@@ -133,6 +149,11 @@ export function tenantRoutes(db: Database) {
       .select({ missingAllergens: count() })
       .from(menuItems)
       .where(and(eq(menuItems.tenantId, tenant.id), eq(menuItems.allergensChecked, false)));
+
+    const [{ missingAlt } = { missingAlt: 0 }] = await db
+      .select({ missingAlt: count() })
+      .from(mediaAssets)
+      .where(and(eq(mediaAssets.tenantId, tenant.id), eq(mediaAssets.alt, "")));
 
     let inbox: { newCount: number; recent: unknown[] } | null = null;
     if (can(role, "inbox")) {
@@ -159,6 +180,7 @@ export function tenantRoutes(db: Database) {
       inbox,
       checklist: {
         missingAllergens,
+        missingAlt,
         noHoursYet: hours.venue.every((d) => d.length === 0),
         upcomingExceptions: upcoming.length,
       },
@@ -402,6 +424,7 @@ export function tenantRoutes(db: Database) {
         allergens: body.allergens,
         allergensChecked: true,
         diets: body.diets,
+        mediaId: await ownedMediaId(tenant.id, body.mediaId),
         position: n,
       })
       .returning();
@@ -440,6 +463,7 @@ export function tenantRoutes(db: Database) {
         allergensChecked: true,
         diets: body.diets,
         ...(body.sectionId && { sectionId: body.sectionId }),
+        ...(body.mediaId !== undefined && { mediaId: await ownedMediaId(tenant.id, body.mediaId) }),
       })
       .where(and(eq(menuItems.id, c.req.param("id")), eq(menuItems.tenantId, tenant.id)))
       .returning();
@@ -468,6 +492,107 @@ export function tenantRoutes(db: Database) {
       .returning();
     if (!item) return c.json({ error: "Gerecht niet gevonden" }, 404);
     await audit(c, soldOut ? "menu.item.soldout" : "menu.item.available", item.id);
+    return c.json({ ok: true });
+  });
+
+  // --------------------------- Media ---------------------------
+  const presentMedia = (m: typeof mediaAssets.$inferSelect, usedBy = 0) => ({
+    id: m.id,
+    width: m.width,
+    height: m.height,
+    bytes: m.bytes,
+    alt: m.alt,
+    focusX: m.focusX,
+    focusY: m.focusY,
+    createdAt: m.createdAt,
+    usedBy,
+  });
+
+  r.get("/media", need("media"), async (c) => {
+    const tenant = c.get("tenant");
+    const rows = await db
+      .select()
+      .from(mediaAssets)
+      .where(eq(mediaAssets.tenantId, tenant.id))
+      .orderBy(desc(mediaAssets.createdAt));
+    const uses = await db
+      .select({ mediaId: menuItems.mediaId, n: count() })
+      .from(menuItems)
+      .where(eq(menuItems.tenantId, tenant.id))
+      .groupBy(menuItems.mediaId);
+    const usage = new Map(uses.map((u) => [u.mediaId, u.n]));
+    return c.json({ media: rows.map((m) => presentMedia(m, usage.get(m.id) ?? 0)) });
+  });
+
+  r.post("/media", need("media"), async (c) => {
+    const tenant = c.get("tenant");
+    const form = await c.req.parseBody().catch(() => null);
+    const file = form?.file;
+    if (!(file instanceof File)) return c.json({ error: "Geen foto ontvangen" }, 400);
+    if (file.size > MAX_UPLOAD_BYTES)
+      return c.json({ error: "Deze foto is te groot (maximaal 4 MB)" }, 413);
+    const alt = typeof form?.alt === "string" ? form.alt.trim().slice(0, 200) : "";
+
+    let processed: Awaited<ReturnType<typeof processImage>>;
+    try {
+      processed = await processImage(Buffer.from(await file.arrayBuffer()));
+    } catch (e) {
+      if (e instanceof InvalidImageError)
+        return c.json(
+          { error: "Dit bestand is geen geldige foto (gebruik JPG, PNG of WebP)" },
+          415,
+        );
+      throw e;
+    }
+
+    const id = crypto.randomUUID();
+    const prefix = `${tenant.id}/${id}`;
+    await Promise.all(
+      processed.variants.map((v) => storage.put(`${prefix}/${v.width}.webp`, v.data, "image/webp")),
+    );
+    const [asset] = await db
+      .insert(mediaAssets)
+      .values({
+        id,
+        tenantId: tenant.id,
+        storagePrefix: prefix,
+        width: processed.width,
+        height: processed.height,
+        bytes: processed.variants.reduce((n, v) => n + v.data.length, 0),
+        alt,
+      })
+      .returning();
+    if (!asset) throw new Error("Foto opslaan mislukt");
+    await audit(c, "media.upload", id);
+    return c.json({ media: presentMedia(asset) }, 201);
+  });
+
+  r.patch("/media/:id", need("media"), zValidator("json", mediaPatchSchema), async (c) => {
+    const tenant = c.get("tenant");
+    const b = c.req.valid("json");
+    const [row] = await db
+      .update(mediaAssets)
+      .set({
+        ...(b.alt !== undefined && { alt: b.alt }),
+        ...(b.focusX !== undefined && { focusX: b.focusX }),
+        ...(b.focusY !== undefined && { focusY: b.focusY }),
+      })
+      .where(and(eq(mediaAssets.id, c.req.param("id")), eq(mediaAssets.tenantId, tenant.id)))
+      .returning();
+    if (!row) return c.json({ error: "Foto niet gevonden" }, 404);
+    return c.json({ media: presentMedia(row) });
+  });
+
+  r.delete("/media/:id", need("media"), async (c) => {
+    const tenant = c.get("tenant");
+    const [row] = await db
+      .delete(mediaAssets)
+      .where(and(eq(mediaAssets.id, c.req.param("id")), eq(mediaAssets.tenantId, tenant.id)))
+      .returning();
+    if (row) {
+      await storage.deletePrefix(row.storagePrefix);
+      await audit(c, "media.delete", row.id);
+    }
     return c.json({ ok: true });
   });
 

@@ -14,11 +14,10 @@ Aanwezig:
 - `apps/admin` — mobiele beheer-app (React + Vite) met Vandaag, Kaart, Gerecht bewerken, Openingstijden, Inbox en Meer
 - Tenant-API (`/t/:slug/...`) met rechten per rol (eigenaar, manager, keuken, medewerker) en een publiek formulier-endpoint (`POST /public/:slug/forms`)
 
-Nog te doen: foto's/media, dagspecials en meldingen op de site (staan als "Binnenkort" in de UI),
+Nog te doen: dagspecials en meldingen op de site (staan als "Binnenkort" in de UI),
 evenementen, e-mailprovider, deploy-pijplijn en Row Level Security (nu wordt tenant-scheiding in de API afgedwongen en getest).
 
-Afwijkingen van de wireframes: gerechten hebben nog geen foto (media-module volgt) en worden direct live
-opgeslagen (geen concept/voorbeeld); sorteren gaat met pijltjes in plaats van slepen.
+Afwijkingen van de wireframes: gerechten worden direct live opgeslagen (geen concept/voorbeeld); sorteren gaat met pijltjes in plaats van slepen.
 
 ## Snel proberen (zonder database)
 
@@ -51,6 +50,28 @@ Nieuwe klant aanmaken:
 ```bash
 pnpm mep:new-tenant --name "Bistro De Haven" --owner sanne@example.nl
 ```
+
+## Foto's
+
+Foto's worden bij het uploaden in de browser verkleind (max. 2000 px, onder 4 MB) en op de server omgezet naar
+WebP in drie breedtes (400/800/1600 px), gedraaid volgens EXIF en ontdaan van metadata zoals GPS. Elke foto heeft een
+beschrijving (alt-tekst) en een focuspunt voor het bijsnijden. Publieke URL: `/api/media/<id>/<400|800|1600>.webp`.
+
+## Deployen op Vercel
+
+Het hele platform draait in één Vercel-project: de beheer-app als statische site en de API als één Node-functie op
+`/api` (zelfde origin, dus cookies werken). `vercel.json` + `scripts/build-vercel.mjs` bouwen dit als Vercel Build Output.
+
+1. Importeer de repo in Vercel (root: de repo zelf, framework: Other). Install/build staan in `vercel.json`.
+2. Voeg een **Postgres**-database toe (bv. Neon via de Marketplace) en zet `DATABASE_URL` (gepoolde URL).
+3. Maak een **Blob store** aan; `BLOB_READ_WRITE_TOKEN` wordt automatisch gezet.
+4. Maak een **Resend**-account, verifieer je afzenderdomein en zet `RESEND_API_KEY` en `MAIL_FROM`.
+5. Zet `ADMIN_URL` op de publieke URL van het project (komt in de inloglinks).
+6. Eerste keer: `DATABASE_URL=… pnpm db:migrate` en `DATABASE_URL=… pnpm mep:new-tenant --superadmin jij@example.nl`.
+   Bij elke productiedeploy draaien de migraties automatisch tijdens de build.
+
+Let op: Vercel-functies accepteren maximaal 4,5 MB per request; daarom is de uploadlimiet 4 MB en verkleint de app
+foto's vooraf. De functie is lokaal als bundel getest (routing en sharp), maar nog niet op een echt Vercel-project.
 
 ## Scripts
 

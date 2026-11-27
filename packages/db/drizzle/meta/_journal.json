@@ -15,6 +15,13 @@
       "when": 1795787713231,
       "tag": "0001_condemned_victor_mancha",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795788653108,
+      "tag": "0002_wakeful_alice",
+      "breakpoints": true
     }
   ]
 }

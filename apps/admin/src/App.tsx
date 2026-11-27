@@ -6,6 +6,7 @@ import { ItemEditor } from "./pages/ItemEditor";
 import { Login, Verify } from "./pages/Login";
 import { Menu } from "./pages/Menu";
 import { More } from "./pages/More";
+import { Photos } from "./pages/Photos";
 import { TenantShell } from "./pages/TenantShell";
 import { Tenants } from "./pages/Tenants";
 import { Today } from "./pages/Today";
@@ -23,6 +24,7 @@ export function App() {
         <Route path="kaart/gerecht/:id" element={<ItemEditor />} />
         <Route path="tijden" element={<Hours />} />
         <Route path="inbox" element={<Inbox />} />
+        <Route path="fotos" element={<Photos />} />
         <Route path="meer" element={<More />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

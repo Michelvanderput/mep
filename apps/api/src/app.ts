@@ -1,7 +1,8 @@
 import { zValidator } from "@hono/zod-validator";
-import { type Database, memberships, submissions, tenants } from "@mep/db";
+import { type Database, mediaAssets, memberships, submissions, tenants } from "@mep/db";
 import {
   createTenantSchema,
+  MEDIA_WIDTHS,
   publicSubmissionSchema,
   requestLoginSchema,
   verifyLoginSchema,
@@ -15,6 +16,7 @@ import { destroySession, findSessionUser, requestLogin, verifyLogin } from "./au
 import type { Config } from "./config";
 import type { Mailer } from "./mailer";
 import { tenantRoutes } from "./routes/tenant";
+import type { Storage } from "./storage";
 import { createTenantWithOwner, SlugTakenError } from "./tenants";
 import type { Env, User } from "./types";
 
@@ -24,9 +26,10 @@ export interface Deps {
   db: Database;
   mailer: Mailer;
   config: Config;
+  storage: Storage;
 }
 
-export function createApp({ db, mailer, config }: Deps) {
+export function createApp({ db, mailer, config, storage }: Deps) {
   const app = new Hono<Env>();
 
   app.use(
@@ -124,7 +127,31 @@ export function createApp({ db, mailer, config }: Deps) {
   );
 
   // --- Beheer per zaak ---
-  app.route("/t/:slug", tenantRoutes(db));
+  app.route("/t/:slug", tenantRoutes(db, storage));
+
+  // --- Publiek: foto's (onraadbare id's, onveranderlijk dus lang cachebaar) ---
+  app.get("/media/:id/:file", async (c) => {
+    const m = /^(\d+)\.webp$/.exec(c.req.param("file"));
+    const width = Number(m?.[1]);
+    if (!m || !(MEDIA_WIDTHS as readonly number[]).includes(width))
+      return c.text("Niet gevonden", 404);
+    const [asset] = await db
+      .select()
+      .from(mediaAssets)
+      .where(eq(mediaAssets.id, c.req.param("id")))
+      .limit(1);
+    if (!asset) return c.text("Niet gevonden", 404);
+    const key = `${asset.storagePrefix}/${width}.webp`;
+    const cache = "public, max-age=31536000, immutable";
+    const url = await storage.publicUrl?.(key);
+    if (url) return c.redirect(url, 302);
+    const file = await storage.get(key);
+    if (!file) return c.text("Niet gevonden", 404);
+    return c.body(new Uint8Array(file.data), 200, {
+      "content-type": file.contentType,
+      "cache-control": cache,
+    });
+  });
 
   // --- Publiek: formulieren vanaf klantwebsites ---
   app.use("/public/*", cors({ origin: "*", allowMethods: ["POST", "OPTIONS"] }));

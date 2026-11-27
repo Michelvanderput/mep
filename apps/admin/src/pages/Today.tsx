@@ -25,7 +25,12 @@ interface TodayData {
   };
   kitchenToday: Slot[];
   inbox: { newCount: number; recent: Submission[] } | null;
-  checklist: { missingAllergens: number; noHoursYet: boolean; upcomingExceptions: number };
+  checklist: {
+    missingAllergens: number;
+    missingAlt: number;
+    noHoursYet: boolean;
+    upcomingExceptions: number;
+  };
 }
 interface MenusData {
   menus: {
@@ -156,7 +161,9 @@ export function Today() {
               </section>
             )}
 
-            {(data.checklist.missingAllergens > 0 || data.checklist.noHoursYet) && (
+            {(data.checklist.missingAllergens > 0 ||
+              data.checklist.noHoursYet ||
+              data.checklist.missingAlt > 0) && (
               <section className="card" aria-label="Nog even afmaken">
                 <h2 className="t">Nog even afmaken</h2>
                 {data.checklist.noHoursYet && can("hours") && (
@@ -166,6 +173,20 @@ export function Today() {
                     style={{ textDecoration: "none", color: "inherit" }}
                   >
                     <span className="grow s">Je openingstijden zijn nog niet ingevuld</span>
+                    <span aria-hidden>›</span>
+                  </Link>
+                )}
+                {data.checklist.missingAlt > 0 && can("media") && (
+                  <Link
+                    to={`/t/${slug}/fotos`}
+                    className="row"
+                    style={{ textDecoration: "none", color: "inherit" }}
+                  >
+                    <span className="grow s">
+                      {data.checklist.missingAlt}{" "}
+                      {data.checklist.missingAlt === 1 ? "foto heeft" : "foto's hebben"} nog geen
+                      beschrijving
+                    </span>
                     <span aria-hidden>›</span>
                   </Link>
                 )}

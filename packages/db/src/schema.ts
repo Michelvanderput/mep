@@ -6,6 +6,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  real,
   text,
   timestamp,
   uniqueIndex,
@@ -173,6 +174,31 @@ export const openingExceptions = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// Media
+// ---------------------------------------------------------------------------
+
+export const mediaAssets = pgTable(
+  "media_assets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    /** Opslagmap, bv. "<tenantId>/<id>". Varianten staan als "<w>.webp" daarin. */
+    storagePrefix: text("storage_prefix").notNull(),
+    width: integer("width").notNull(),
+    height: integer("height").notNull(),
+    /** Totale grootte van alle varianten. */
+    bytes: integer("bytes").notNull(),
+    alt: text("alt").notNull().default(""),
+    focusX: real("focus_x").notNull().default(0.5),
+    focusY: real("focus_y").notNull().default(0.5),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("media_tenant_idx").on(t.tenantId, t.createdAt)],
+);
+
+// ---------------------------------------------------------------------------
 // Menukaart
 // ---------------------------------------------------------------------------
 
@@ -228,6 +254,7 @@ export const menuItems = pgTable(
     soldOut: boolean("sold_out").notNull().default(false),
     /** Vanaf deze datum (JJJJ-MM-DD) is het gerecht weer beschikbaar; null = tot handmatig terug. */
     soldOutUntil: text("sold_out_until"),
+    mediaId: uuid("media_id").references(() => mediaAssets.id, { onDelete: "set null" }),
     position: integer("position").notNull().default(0),
     ...timestamps,
   },

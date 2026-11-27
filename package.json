@@ -16,14 +16,19 @@
     "db:generate": "pnpm --filter @mep/db generate",
     "db:migrate": "pnpm --filter @mep/db migrate",
     "mep:new-tenant": "pnpm --filter @mep/api new-tenant",
-    "dev:local": "pnpm --filter @mep/api dev:local & pnpm --filter @mep/admin dev"
+    "dev:local": "pnpm --filter @mep/api dev:local & pnpm --filter @mep/admin dev",
+    "build:vercel": "node scripts/build-vercel.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.9",
     "@types/node": "^26.6.11",
+    "esbuild": "^0.28.2",
     "tsx": "^4.23.15",
     "turbo": "^2.11.13",
     "typescript": "^7.0.2",
     "vitest": "^5.1.2"
+  },
+  "dependencies": {
+    "sharp": "^0.35.5"
   }
 }

@@ -16,8 +16,10 @@
     "@hono/zod-validator": "^0.9.1",
     "@mep/db": "workspace:*",
     "@mep/schemas": "workspace:*",
+    "@vercel/blob": "^2.9.0",
     "drizzle-orm": "^0.45.4",
     "hono": "^4.13.23",
+    "sharp": "^0.35.5",
     "zod": "^4.6.7"
   }
 }

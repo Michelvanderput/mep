@@ -5,6 +5,7 @@
 import { serve } from "@hono/node-server";
 import {
   loginTokens,
+  mediaAssets,
   memberships,
   menuItems,
   menuSections,
@@ -15,13 +16,16 @@ import {
   users,
 } from "@mep/db";
 import { createTestDb } from "@mep/db/testing";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { setCookie } from "hono/cookie";
+import sharp from "sharp";
 import { createApp } from "./app";
 import { hashToken, newToken, verifyLogin } from "./auth";
 import { loadConfig } from "./config";
+import { processImage } from "./images";
 import { consoleMailer } from "./mailer";
+import { diskStorage, memoryStorage } from "./storage";
 
 const db = await createTestDb();
 const config = loadConfig({ ADMIN_URL: process.env.ADMIN_URL ?? "http://localhost:5173" });
@@ -207,7 +211,39 @@ await db.insert(submissions).values([
   },
 ]);
 
-const api = createApp({ db, mailer: consoleMailer, config });
+const storage = process.env.MEDIA_DIR ? diskStorage(process.env.MEDIA_DIR) : memoryStorage();
+
+// Voorbeeldfoto's (gegenereerde kleurvlakken) zodat de UI er echt uitziet.
+const palette: [string, string, string][] = [
+  ["Gerookte paling", "#2f4b44", "#9bb8a4"],
+  ["Pompoensoep", "#c2761f", "#f1c27d"],
+  ["Kabeljauw", "#3d5a80", "#c9d9ea"],
+  ["Crème brûlée", "#8a5a2b", "#f0d9a8"],
+];
+for (const [i, [label, c1, c2]] of palette.entries()) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs><rect width="1200" height="900" fill="url(#g)"/><circle cx="600" cy="450" r="260" fill="#ffffff22"/><circle cx="600" cy="450" r="170" fill="#ffffff33"/></svg>`;
+  const p = await processImage(await sharp(Buffer.from(svg)).png().toBuffer());
+  const id = crypto.randomUUID();
+  const prefix = `${tenant.id}/${id}`;
+  await Promise.all(
+    p.variants.map((v) => storage.put(`${prefix}/${v.width}.webp`, v.data, "image/webp")),
+  );
+  await db.insert(mediaAssets).values({
+    id,
+    tenantId: tenant.id,
+    storagePrefix: prefix,
+    width: p.width,
+    height: p.height,
+    bytes: 1,
+    alt: i === 3 ? "" : `Bord met ${label.toLowerCase()}`,
+  });
+  await db
+    .update(menuItems)
+    .set({ mediaId: id })
+    .where(and(eq(menuItems.tenantId, tenant.id), eq(menuItems.name, label)));
+}
+
+const api = createApp({ db, mailer: consoleMailer, config, storage });
 const root = new Hono();
 
 // Handig voor lokaal testen: /dev/login?email=sanne@dehaven.test zet direct een sessie.

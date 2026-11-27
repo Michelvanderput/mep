@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, test } from "vitest";
 import { createApp } from "../src/app";
 import { loadConfig } from "../src/config";
 import { memoryMailer } from "../src/mailer";
+import { memoryStorage } from "../src/storage";
 
 let db: Database;
 let mailer: ReturnType<typeof memoryMailer>;
@@ -31,7 +32,7 @@ async function login(email: string) {
 beforeEach(async () => {
   db = await createTestDb();
   mailer = memoryMailer();
-  app = createApp({ db, mailer, config: loadConfig({}) });
+  app = createApp({ db, mailer, config: loadConfig({}), storage: memoryStorage() });
   await db.insert(users).values({ email: "admin@mep.nl", isSuperadmin: true });
 });
 

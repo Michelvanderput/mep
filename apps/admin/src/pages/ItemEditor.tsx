@@ -2,7 +2,9 @@ import { ALLERGENS, DIETS, formatPrice, parsePriceToCents } from "@mep/schemas";
 import { type FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, useLoad } from "../api";
+import { PhotoPicker } from "../components/PhotoPicker";
 import { ErrorBox, Spinner, useToast } from "../components/ui";
+import { photoUrl } from "../photos";
 import type { MenuItemRow } from "./Menu";
 import { useTenant } from "./TenantShell";
 
@@ -39,6 +41,8 @@ export function ItemEditor() {
   const [sectionId, setSectionId] = useState("");
   const [allergens, setAllergens] = useState<string[]>([]);
   const [diets, setDiets] = useState<string[]>([]);
+  const [mediaId, setMediaId] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [problem, setProblem] = useState("");
@@ -52,6 +56,7 @@ export function ItemEditor() {
     setSectionId(i?.sectionId ?? params.get("sectie") ?? data.sections[0]?.id ?? "");
     setAllergens(i?.allergens ?? []);
     setDiets(i?.diets ?? []);
+    setMediaId(i?.mediaId ?? null);
   }, [data, params]);
 
   if (loading) return <Spinner />;
@@ -69,7 +74,7 @@ export function ItemEditor() {
     setProblem("");
     setBusy(true);
     try {
-      const body = { name, description, priceCents: cents, allergens, diets, sectionId };
+      const body = { name, description, priceCents: cents, allergens, diets, sectionId, mediaId };
       if (isNew) await api(`/t/${slug}/sections/${sectionId}/items`, { method: "POST", body });
       else await api(`/t/${slug}/items/${id}`, { method: "PATCH", body });
       toast(isNew ? `${name} is toegevoegd` : "Opgeslagen");
@@ -103,6 +108,25 @@ export function ItemEditor() {
       </header>
       <form onSubmit={save} id="item-form">
         <main className="content">
+          <div className={`hero-photo${mediaId ? " has" : ""}`}>
+            {mediaId ? (
+              <img src={photoUrl(mediaId, 800)} alt="" />
+            ) : (
+              <button type="button" className="btn" onClick={() => setPicking(true)}>
+                Foto toevoegen
+              </button>
+            )}
+          </div>
+          {mediaId && (
+            <div className="row">
+              <button type="button" className="btn sm grow" onClick={() => setPicking(true)}>
+                Foto wijzigen
+              </button>
+              <button type="button" className="btn sm grow" onClick={() => setMediaId(null)}>
+                Foto weghalen
+              </button>
+            </div>
+          )}
           <div className="field">
             <label className="label" htmlFor="name">
               Naam
@@ -251,6 +275,17 @@ export function ItemEditor() {
           </div>
         </div>
       </form>
+      {picking && (
+        <PhotoPicker
+          slug={slug}
+          suggestedAlt={name}
+          onClose={() => setPicking(false)}
+          onPick={(m) => {
+            setMediaId(m.id);
+            setPicking(false);
+          }}
+        />
+      )}
     </>
   );
 }

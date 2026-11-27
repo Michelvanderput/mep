@@ -85,4 +85,5 @@ export function slugify(input: string): string {
 
 export * from "./holidays";
 export * from "./hours";
+export * from "./media";
 export * from "./menu";

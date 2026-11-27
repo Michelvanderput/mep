@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, test } from "vitest";
 import { createApp } from "../src/app";
 import { loadConfig } from "../src/config";
 import { memoryMailer } from "../src/mailer";
+import { memoryStorage } from "../src/storage";
 
 let db: Database;
 let mailer: ReturnType<typeof memoryMailer>;
@@ -41,7 +42,7 @@ const week = [[], [{ open: "12:00", close: "22:00" }], [], [], [], [], []];
 beforeEach(async () => {
   db = await createTestDb();
   mailer = memoryMailer();
-  app = createApp({ db, mailer, config: loadConfig({}) });
+  app = createApp({ db, mailer, config: loadConfig({}), storage: memoryStorage() });
   const [t] = await db.insert(tenants).values({ slug: "haven", name: "De Haven" }).returning();
   tenantId = t?.id as string;
 });

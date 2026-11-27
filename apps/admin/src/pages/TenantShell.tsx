@@ -4,12 +4,12 @@ import { Navigate, NavLink, Outlet, useLocation, useNavigate, useParams } from "
 import { api, type Me, useLoad } from "../api";
 import { ErrorBox, icons, Spinner } from "../components/ui";
 
-type Area = "today" | "menu" | "hours" | "inbox";
+type Area = "today" | "menu" | "hours" | "inbox" | "media";
 const ACCESS: Record<Role, Area[]> = {
-  owner: ["today", "menu", "hours", "inbox"],
-  manager: ["today", "menu", "hours", "inbox"],
-  kitchen: ["today", "menu"],
-  staff: ["today", "inbox"],
+  owner: ["today", "menu", "hours", "inbox", "media"],
+  manager: ["today", "menu", "hours", "inbox", "media"],
+  kitchen: ["today", "menu", "media"],
+  staff: ["today", "inbox", "media"],
 };
 
 export interface TenantCtx {
