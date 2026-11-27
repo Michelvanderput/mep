@@ -1,0 +1,12 @@
+{
+  "name": "Mis en place",
+  "short_name": "MEP",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f5f3",
+  "theme_color": "#1f6f5c",
+  "lang": "nl",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

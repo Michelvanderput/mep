@@ -1,19 +1,24 @@
 import { zValidator } from "@hono/zod-validator";
-import { type Database, memberships, tenants, type users } from "@mep/db";
-import { createTenantSchema, requestLoginSchema, verifyLoginSchema } from "@mep/schemas";
+import { type Database, memberships, submissions, tenants } from "@mep/db";
+import {
+  createTenantSchema,
+  publicSubmissionSchema,
+  requestLoginSchema,
+  verifyLoginSchema,
+} from "@mep/schemas";
 import { desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
+import { cors } from "hono/cors";
 import { createMiddleware } from "hono/factory";
 import { destroySession, findSessionUser, requestLogin, verifyLogin } from "./auth";
 import type { Config } from "./config";
 import type { Mailer } from "./mailer";
+import { tenantRoutes } from "./routes/tenant";
 import { createTenantWithOwner, SlugTakenError } from "./tenants";
+import type { Env, User } from "./types";
 
 const SESSION_COOKIE = "mep_session";
-
-type User = typeof users.$inferSelect;
-type Env = { Variables: { user: User | null } };
 
 export interface Deps {
   db: Database;
@@ -117,6 +122,31 @@ export function createApp({ db, mailer, config }: Deps) {
       }
     },
   );
+
+  // --- Beheer per zaak ---
+  app.route("/t/:slug", tenantRoutes(db));
+
+  // --- Publiek: formulieren vanaf klantwebsites ---
+  app.use("/public/*", cors({ origin: "*", allowMethods: ["POST", "OPTIONS"] }));
+  app.post("/public/:slug/forms", zValidator("json", publicSubmissionSchema), async (c) => {
+    const [tenant] = await db
+      .select()
+      .from(tenants)
+      .where(eq(tenants.slug, c.req.param("slug")))
+      .limit(1);
+    if (!tenant || tenant.status !== "active") return c.json({ error: "Zaak niet gevonden" }, 404);
+    const b = c.req.valid("json");
+    await db.insert(submissions).values({
+      tenantId: tenant.id,
+      type: b.type,
+      name: b.name,
+      email: b.email,
+      phone: b.phone ?? null,
+      message: b.message,
+      data: b.data ?? null,
+    });
+    return c.json({ ok: true }, 201);
+  });
 
   return app;
 }

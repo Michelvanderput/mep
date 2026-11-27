@@ -2,7 +2,7 @@
   "name": "mep",
   "private": true,
   "version": "0.0.0",
-  "description": "Mis en place (MEP) — horeca-CMS",
+  "description": "Mis en place (MEP) \u2014 horeca-CMS",
   "packageManager": "pnpm@10.28.0",
   "engines": {
     "node": ">=22"
@@ -15,7 +15,8 @@
     "format": "biome check --write .",
     "db:generate": "pnpm --filter @mep/db generate",
     "db:migrate": "pnpm --filter @mep/db migrate",
-    "mep:new-tenant": "pnpm --filter @mep/api new-tenant"
+    "mep:new-tenant": "pnpm --filter @mep/api new-tenant",
+    "dev:local": "pnpm --filter @mep/api dev:local & pnpm --filter @mep/admin dev"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.9",

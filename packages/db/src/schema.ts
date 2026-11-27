@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   index,
+  integer,
   jsonb,
   pgEnum,
   pgTable,
@@ -130,4 +131,136 @@ export const auditLog = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("audit_tenant_idx").on(t.tenantId, t.createdAt)],
+);
+
+// ---------------------------------------------------------------------------
+// Openingstijden
+// ---------------------------------------------------------------------------
+
+/** Weekschema per soort ("venue" = zaal, "kitchen" = keuken): 7 dagen met tijdvakken. */
+export const openingHours = pgTable(
+  "opening_hours",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    schedule: jsonb("schedule").$type<{ open: string; close: string }[][]>().notNull(),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("opening_hours_tenant_kind_uq").on(t.tenantId, t.kind)],
+);
+
+export const openingExceptions = pgTable(
+  "opening_exceptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    /** JJJJ-MM-DD in de tijdzone van de zaak. */
+    date: text("date").notNull(),
+    closed: boolean("closed").notNull().default(true),
+    slots: jsonb("slots")
+      .$type<{ open: string; close: string }[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    reason: text("reason"),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("opening_exceptions_tenant_date_uq").on(t.tenantId, t.date)],
+);
+
+// ---------------------------------------------------------------------------
+// Menukaart
+// ---------------------------------------------------------------------------
+
+export const menus = pgTable(
+  "menus",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    position: integer("position").notNull().default(0),
+    ...timestamps,
+  },
+  (t) => [index("menus_tenant_idx").on(t.tenantId)],
+);
+
+export const menuSections = pgTable(
+  "menu_sections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    menuId: uuid("menu_id")
+      .notNull()
+      .references(() => menus.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    position: integer("position").notNull().default(0),
+    ...timestamps,
+  },
+  (t) => [index("menu_sections_menu_idx").on(t.menuId)],
+);
+
+export const menuItems = pgTable(
+  "menu_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    sectionId: uuid("section_id")
+      .notNull()
+      .references(() => menuSections.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    /** Prijs in centen. */
+    priceCents: integer("price_cents").notNull().default(0),
+    allergens: text("allergens").array().notNull().default(sql`'{}'::text[]`),
+    /** Pas true als een mens de allergenen heeft gecontroleerd (ook als het er geen zijn). */
+    allergensChecked: boolean("allergens_checked").notNull().default(false),
+    diets: text("diets").array().notNull().default(sql`'{}'::text[]`),
+    soldOut: boolean("sold_out").notNull().default(false),
+    /** Vanaf deze datum (JJJJ-MM-DD) is het gerecht weer beschikbaar; null = tot handmatig terug. */
+    soldOutUntil: text("sold_out_until"),
+    position: integer("position").notNull().default(0),
+    ...timestamps,
+  },
+  (t) => [
+    index("menu_items_section_idx").on(t.sectionId),
+    index("menu_items_tenant_idx").on(t.tenantId),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Inbox
+// ---------------------------------------------------------------------------
+
+export const submissions = pgTable(
+  "submissions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    type: text("type").notNull().default("contact"),
+    status: text("status").notNull().default("new"),
+    name: text("name").notNull(),
+    email: text("email").notNull(),
+    phone: text("phone"),
+    message: text("message").notNull(),
+    data: jsonb("data").$type<Record<string, string | number | boolean>>(),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [index("submissions_tenant_status_idx").on(t.tenantId, t.status, t.createdAt)],
 );

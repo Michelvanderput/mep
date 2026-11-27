@@ -8,7 +8,8 @@
     "start": "tsx src/server.ts",
     "new-tenant": "tsx src/cli/new-tenant.ts",
     "typecheck": "tsc -p .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "dev:local": "tsx src/dev.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.11",
