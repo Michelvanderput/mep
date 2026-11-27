@@ -477,6 +477,15 @@ export function tenantRoutes(
   r.patch("/items/:id", need("menu"), zValidator("json", itemInputSchema), async (c) => {
     const tenant = c.get("tenant");
     const body = c.req.valid("json");
+    // Een nieuwe categorie moet van deze zaak zijn (anders zou je een gerecht naar een andere zaak kunnen schuiven).
+    if (body.sectionId) {
+      const [own] = await db
+        .select({ id: menuSections.id })
+        .from(menuSections)
+        .where(and(eq(menuSections.id, body.sectionId), eq(menuSections.tenantId, tenant.id)))
+        .limit(1);
+      if (!own) return c.json({ error: "Categorie niet gevonden" }, 404);
+    }
     const [item] = await db
       .update(menuItems)
       .set({

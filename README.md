@@ -101,9 +101,16 @@ foto's vooraf. De functie is lokaal als bundel getest (routing en sharp), maar n
 
 - **Team:** de eigenaar nodigt collega's uit (Meer → Team en rollen) als eigenaar, manager, keuken of medewerker; ze krijgen een inloglink per mail. Er blijft altijd minstens één eigenaar over.
 - **Export:** de eigenaar kan alle gegevens van de zaak als JSON downloaden (geen lock-in, AVG-inzage).
+- **Tenant-isolatie:** elke zaak ziet alleen zijn eigen gegevens. `apps/api/test/isolation.test.ts` valt elk id-gebonden endpoint aan met id's van een andere zaak en vergelijkt daarna de volledige export; een bewaker laat de test falen zodra een nieuwe route niet is opgenomen. Row Level Security in de database is nog niet toegevoegd (bewust uitgesteld: zie hieronder).
 - **Spambeveiliging formulieren:** verborgen controleveld, max. 3 berichten per afzender per 10 minuten en 60 per zaak per uur (tellers in de database, dus geschikt voor serverless).
 - **Headers:** de API stuurt beveiligingsheaders (`nosniff`, `X-Frame-Options`, enz.); foto's blijven cross-origin laadbaar.
 - **Bewaartermijn:** afgehandelde berichten worden na 12 maanden automatisch verwijderd.
+
+### Row Level Security (nog niet gedaan)
+
+RLS zou de tenant-scheiding ook in de database afdwingen. Het vraagt een niet-eigenaar-rol (`SET LOCAL ROLE`), een
+tenant-instelling per transactie en aanpassing van alle publieke routes en de cron, en gedraagt zich anders per
+Postgres-aanbieder (Neon, gepoolde verbindingen). Doe dit op het echte platform, met de isolatietest als vangnet.
 
 ## Scripts
 
