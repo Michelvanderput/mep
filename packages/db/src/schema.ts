@@ -380,3 +380,29 @@ export const events = pgTable(
   },
   (t) => [index("events_tenant_date_idx").on(t.tenantId, t.date)],
 );
+
+// ---------------------------------------------------------------------------
+// Vertalingen
+// ---------------------------------------------------------------------------
+
+/**
+ * Vertaalde velden per stuk inhoud en taal. De brontaal (nl) staat in de eigen tabellen;
+ * ontbreekt een vertaling, dan valt de publieke API terug op de brontaal.
+ */
+export const translations = pgTable(
+  "translations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    /** menu | section | item | page | event | special | announcement */
+    entity: text("entity").notNull(),
+    /** Id van het item; bij pagina's de paginasleutel (home, about, ...). */
+    entityId: text("entity_id").notNull(),
+    locale: text("locale").notNull(),
+    fields: jsonb("fields").$type<Record<string, string>>().notNull().default(sql`'{}'::jsonb`),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("translations_uq").on(t.tenantId, t.entity, t.entityId, t.locale)],
+);

@@ -18,7 +18,7 @@ Pagina's: vaste pagina's (Home, Over ons, Contact) met vaste velden plus eigen t
 
 Evenementen zijn eenmalig of wekelijks (bv. "elke dinsdag pubquiz", met optionele einddatum); aanmelden en tickets lopen via een ticketlink of het contactformulier.
 
-Nog te doen: nieuws, aanmeldingen voor evenementen, meertaligheid, de eerste echte Vercel-deploy en Row Level Security (nu wordt tenant-scheiding in de API afgedwongen en getest).
+Nog te doen: nieuws, aanmeldingen voor evenementen, vertaalde SDK-labels, meertaligheid, de eerste echte Vercel-deploy en Row Level Security (nu wordt tenant-scheiding in de API afgedwongen en getest).
 
 Afwijkingen van de wireframes: gerechten worden direct live opgeslagen (geen concept/voorbeeld); sorteren gaat met pijltjes in plaats van slepen.
 
@@ -56,7 +56,7 @@ pnpm mep:new-tenant --name "Bistro De Haven" --owner sanne@example.nl
 
 ## Klantwebsites koppelen (`@mep/sdk`)
 
-Een klantsite haalt zijn gegevens uit de publieke, alleen-lezen API (`/api/public/<slug>/info|hours|menus|announcements|specials|pages|events`; 60 s CDN-cache, browsers controleren altijd)
+Een klantsite haalt zijn gegevens uit de publieke, alleen-lezen API (`/api/public/<slug>/info|hours|menus|announcements|specials|pages|events`, met `?lang=en` voor vertalingen; 60 s CDN-cache, browsers controleren altijd)
 via `@mep/sdk`:
 
 ```ts
@@ -96,6 +96,15 @@ Het hele platform draait in één Vercel-project: de beheer-app als statische si
 
 Let op: Vercel-functies accepteren maximaal 4,5 MB per request; daarom is de uploadlimiet 4 MB en verkleint de app
 foto's vooraf. De functie is lokaal als bundel getest (routing en sharp), maar nog niet op een echt Vercel-project.
+
+## Meertaligheid
+
+De eigenaar zet talen aan (Engels, Duits, Frans; Nederlands is de brontaal) en vult vertalingen in onder Meer →
+Vertalingen: kaart, categorieën, gerechten, pagina's, evenementen, specials en meldingen, met voortgang en een filter op
+wat nog ontbreekt. De publieke API en SDK (`lang`) leveren de vertaalde tekst en vallen per tekst terug op Nederlands.
+Vaste paginatitels (Home, Over ons, Contact) hebben ingebouwde vertalingen. Nog Nederlands, ook als `lang` is gezet:
+labels die de SDK zelf maakt ("Nu open · tot 22:00", weekdagen) en de koppen van je eigen site; die vertaal je in het
+sitesjabloon. Een automatische vertaalsuggestie (AI) staat er niet in.
 
 ## Team, veiligheid en AVG
 

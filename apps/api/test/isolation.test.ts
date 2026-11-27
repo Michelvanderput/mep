@@ -119,6 +119,15 @@ describe("tenant-isolatie", () => {
       (m: { email: string }) => m.email === "kok-b@example.nl",
     );
 
+    await call(B.cookie, "PUT", "/t/zaak-b/locales", { locales: ["nl", "en"] });
+    await call(A.cookie, "PUT", "/t/zaak-a/locales", { locales: ["nl", "en"] });
+    await call(B.cookie, "PUT", "/t/zaak-b/translations", {
+      locale: "en",
+      entity: "item",
+      entityId: item.id,
+      fields: { name: "B only" },
+    });
+
     const snapshot = async () => {
       const x = await j(await call(B.cookie, "GET", "/t/zaak-b/export"));
       x.exportedAt = undefined;
@@ -154,6 +163,26 @@ describe("tenant-isolatie", () => {
       ["DELETE", `/t/zaak-a/announcements/${announcement.id}`],
       ["DELETE", `/t/zaak-a/specials/${special.id}`],
       ["PATCH", `/t/zaak-a/submissions/${sub.id}`, { status: "done", note: "Gehackt" }],
+      [
+        "PUT",
+        `/t/zaak-a/translations`,
+        { locale: "en", entity: "item", entityId: item.id, fields: { name: "Gehackt" } },
+      ],
+      [
+        "PUT",
+        `/t/zaak-a/translations`,
+        { locale: "en", entity: "section", entityId: section.id, fields: { name: "Gehackt" } },
+      ],
+      [
+        "PUT",
+        `/t/zaak-a/translations`,
+        { locale: "en", entity: "page", entityId: pageKey, fields: { title: "Gehackt" } },
+      ],
+      [
+        "PUT",
+        `/t/zaak-a/translations`,
+        { locale: "en", entity: "event", entityId: event.id, fields: { title: "Gehackt" } },
+      ],
       ["PATCH", `/t/zaak-a/team/${kok.userId}`, { role: "owner" }],
       ["DELETE", `/t/zaak-a/team/${kok.userId}`],
     ];

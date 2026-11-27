@@ -72,6 +72,21 @@ export function More() {
             </a>
           </>
         )}
+        {can("pages") && (
+          <Link
+            to={`/t/${slug}/vertalingen`}
+            className="card"
+            style={{ textDecoration: "none", color: "inherit" }}
+          >
+            <div className="row">
+              <div className="grow">
+                <div className="t">Vertalingen</div>
+                <div className="s">Je site in het Engels, Duits of Frans</div>
+              </div>
+              <span aria-hidden>›</span>
+            </div>
+          </Link>
+        )}
         {can("events") && (
           <Link
             to={`/t/${slug}/evenementen`}

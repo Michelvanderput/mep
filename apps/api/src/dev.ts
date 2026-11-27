@@ -15,6 +15,7 @@ import {
   pages,
   submissions,
   tenants,
+  translations,
   users,
 } from "@mep/db";
 import { createTestDb } from "@mep/db/testing";
@@ -38,6 +39,7 @@ const [tenant] = await db
     slug: "bistro-de-haven",
     name: "Bistro De Haven",
     modules: ["menu", "opening_hours", "forms"],
+    locales: ["nl", "en"],
   })
   .returning();
 const [owner] = await db
@@ -210,6 +212,36 @@ await db.insert(pages).values([
     content: {
       body: "Onze bovenzaal biedt plaats aan 40 gasten.\n\nNeem contact op voor de mogelijkheden.",
     },
+  },
+]);
+
+const allItems = await db.select().from(menuItems).where(eq(menuItems.tenantId, tenant.id));
+const en: Record<string, Record<string, string>> = {
+  "Gerookte paling": { name: "Smoked eel", description: "Horseradish cream, red beet, sourdough" },
+  Pompoensoep: { name: "Pumpkin soup", description: "Roasted pumpkin, coconut, pumpkin seeds" },
+  Kabeljauw: { name: "Cod", description: "Beurre blanc, leek, baby potatoes" },
+};
+for (const i of allItems) {
+  const t = en[i.name];
+  if (t)
+    await db
+      .insert(translations)
+      .values({ tenantId: tenant.id, entity: "item", entityId: i.id, locale: "en", fields: t });
+}
+await db.insert(translations).values([
+  {
+    tenantId: tenant.id,
+    entity: "menu",
+    entityId: diner?.id as string,
+    locale: "en",
+    fields: { name: "Dinner" },
+  },
+  {
+    tenantId: tenant.id,
+    entity: "section",
+    entityId: voor,
+    locale: "en",
+    fields: { name: "Starters" },
   },
 ]);
 

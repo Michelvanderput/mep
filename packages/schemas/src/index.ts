@@ -86,6 +86,7 @@ export function slugify(input: string): string {
 export * from "./events";
 export * from "./holidays";
 export * from "./hours";
+export * from "./i18n";
 export * from "./media";
 export * from "./menu";
 export * from "./pages";

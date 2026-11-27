@@ -43,6 +43,13 @@
       "when": 1795790392073,
       "tag": "0005_opposite_quicksilver",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795791574868,
+      "tag": "0006_salty_garia",
+      "breakpoints": true
     }
   ]
 }

@@ -12,7 +12,11 @@ import {
 import "./style.css";
 
 // Zo gebruikt een klantwebsite MEP: een client per zaak, daarna gewone data.
-const mep = createClient({
+const MEP = {
+  baseUrl: import.meta.env.VITE_MEP_API ?? "http://localhost:8787",
+  tenant: import.meta.env.VITE_MEP_TENANT ?? "bistro-de-haven",
+};
+let mep = createClient({
   baseUrl: import.meta.env.VITE_MEP_API ?? "http://localhost:8787",
   tenant: import.meta.env.VITE_MEP_TENANT ?? "bistro-de-haven",
 });
@@ -20,7 +24,8 @@ const mep = createClient({
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
-async function init() {
+async function init(lang?: string) {
+  mep = createClient({ ...MEP, lang });
   const [info, hours, menus, announcements, specials, agenda] = await Promise.all([
     mep.info(),
     mep.hours(),
@@ -29,6 +34,21 @@ async function init() {
     mep.specials(),
     mep.events(6),
   ]);
+  const langs = $("langs");
+  langs.hidden = info.locales.length < 2;
+  langs.innerHTML = info.locales
+    .map(
+      (l) =>
+        `<button data-lang="${l}" aria-pressed="${(lang ?? "nl") === l}">${l.toUpperCase()}</button>`,
+    )
+    .join("");
+  langs.onclick = (e) => {
+    const l = (e.target as HTMLElement).dataset.lang;
+    if (l) {
+      document.documentElement.lang = l;
+      void init(l);
+    }
+  };
   document.title = `${info.name} · ${info.type === "restaurant" ? "Restaurant" : info.type}`;
   $("name").textContent = info.name;
 
@@ -138,11 +158,11 @@ function renderMenus(menus: Menu[]) {
   tabs.innerHTML = withItems
     .map((m) => `<button role="tab" data-id="${m.id}">${esc(m.name)}</button>`)
     .join("");
-  tabs.addEventListener("click", (e) => {
+  tabs.onclick = (e) => {
     const id = (e.target as HTMLElement).dataset.id;
     const m = withItems.find((x) => x.id === id);
     if (m) show(m);
-  });
+  };
   if (withItems[0]) show(withItems[0]);
 }
 

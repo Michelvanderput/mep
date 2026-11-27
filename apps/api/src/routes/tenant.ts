@@ -16,6 +16,7 @@ import {
   specials,
   submissions,
   tenants,
+  translations as translationsTable,
   users as usersTable,
 } from "@mep/db";
 import {
@@ -62,6 +63,7 @@ import { InvalidImageError, processImage } from "../images";
 import type { Mailer } from "../mailer";
 import type { Storage } from "../storage";
 import { type Area, can, type Env } from "../types";
+import { registerTranslationRoutes } from "./translations";
 
 export function tenantRoutes(
   db: Database,
@@ -1094,6 +1096,8 @@ export function tenantRoutes(
       return c.json({ submission: row });
     },
   );
+
+  registerTranslationRoutes(r, db, need);
 
   return r;
 }

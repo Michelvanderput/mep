@@ -19,6 +19,8 @@ export interface MepClientOptions {
   /** Korte naam (slug) van de zaak. */
   tenant: string;
   fetch?: typeof fetch;
+  /** Taal van de teksten ("en", "de", "fr"). Niet vertaalde teksten komen in het Nederlands terug. */
+  lang?: string;
 }
 
 export interface TenantInfo {
@@ -135,7 +137,10 @@ export function createClient(opts: MepClientOptions) {
   const root = `${base}/public/${encodeURIComponent(opts.tenant)}`;
 
   async function get<T>(path: string): Promise<T> {
-    const res = await f(`${root}${path}`);
+    const url = opts.lang
+      ? `${root}${path}${path.includes("?") ? "&" : "?"}lang=${encodeURIComponent(opts.lang)}`
+      : `${root}${path}`;
+    const res = await f(url);
     if (!res.ok) throw new MepError(`MEP: ${path} gaf ${res.status}`, res.status);
     return (await res.json()) as T;
   }

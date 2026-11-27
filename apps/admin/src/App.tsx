@@ -15,6 +15,7 @@ import { Team } from "./pages/Team";
 import { TenantShell } from "./pages/TenantShell";
 import { Tenants } from "./pages/Tenants";
 import { Today } from "./pages/Today";
+import { Translations } from "./pages/Translations";
 
 export function App() {
   return (
@@ -31,6 +32,7 @@ export function App() {
         <Route path="inbox" element={<Inbox />} />
         <Route path="fotos" element={<Photos />} />
         <Route path="team" element={<Team />} />
+        <Route path="vertalingen" element={<Translations />} />
         <Route path="evenementen" element={<EventsList />} />
         <Route path="evenementen/:id" element={<EventEditor />} />
         <Route path="paginas" element={<PagesList />} />

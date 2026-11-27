@@ -11,9 +11,12 @@ import {
 } from "@mep/db";
 import {
   computeOpenStatus,
+  DEFAULT_LOCALE,
   expandOccurrences,
   FIXED_PAGE_KEYS,
+  FIXED_PAGE_TITLES,
   isActiveOn,
+  type LocaleId,
   localParts,
   mediaPath,
   PAGE_TEMPLATES,
@@ -23,6 +26,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { loadHours } from "../hours";
+import { loadOverlay } from "../i18n";
 import type { Tenant } from "../types";
 
 type PublicEnv = { Variables: { tenant: Tenant } };
@@ -53,6 +57,19 @@ export function publicRoutes(db: Database) {
       }
     }),
   );
+
+  /** Vertaalfunctie voor ?lang=xx (valt per tekst terug op de brontaal). */
+  const tr = (c: {
+    get: (k: "tenant") => Tenant;
+    req: { query: (k: string) => string | undefined };
+  }) => loadOverlay(db, c.get("tenant"), c.req.query("lang"));
+  const langOf = (c: {
+    get: (k: "tenant") => Tenant;
+    req: { query: (k: string) => string | undefined };
+  }) => {
+    const l = c.req.query("lang");
+    return l && c.get("tenant").locales.includes(l) ? l : DEFAULT_LOCALE;
+  };
 
   r.get("/info", (c) => {
     const t = c.get("tenant");
@@ -89,6 +106,7 @@ export function publicRoutes(db: Database) {
 
   r.get("/menus", async (c) => {
     const t = c.get("tenant");
+    const t_ = await tr(c);
     const { date: today } = localParts(new Date(), t.timezone);
     const [ms, sections, items] = await Promise.all([
       db
@@ -110,18 +128,18 @@ export function publicRoutes(db: Database) {
     return c.json({
       menus: ms.map((m) => ({
         id: m.id,
-        name: m.name,
+        name: t_("menu", m.id, "name", m.name),
         sections: sections
           .filter((s) => s.menuId === m.id)
           .map((s) => ({
             id: s.id,
-            name: s.name,
+            name: t_("section", s.id, "name", s.name),
             items: items
               .filter((i) => i.sectionId === s.id)
               .map((i) => ({
                 id: i.id,
-                name: i.name,
-                description: i.description,
+                name: t_("item", i.id, "name", i.name),
+                description: t_("item", i.id, "description", i.description),
                 priceCents: i.priceCents,
                 // Alleen tonen als een mens ze gecontroleerd heeft; anders weten we het niet.
                 allergens: i.allergensChecked ? i.allergens : null,
@@ -139,6 +157,8 @@ export function publicRoutes(db: Database) {
   /** Overzicht: welke pagina's bestaan en hebben inhoud (vaste pagina's staan er altijd bij). */
   r.get("/pages", async (c) => {
     const t = c.get("tenant");
+    const t_ = await tr(c);
+    const lang = langOf(c);
     const rows = await db
       .select()
       .from(pages)
@@ -150,13 +170,18 @@ export function publicRoutes(db: Database) {
       pages: [
         ...FIXED_PAGE_KEYS.map((key) => ({
           key,
-          title: PAGE_TEMPLATES[key].title,
+          title: FIXED_PAGE_TITLES[lang as LocaleId]?.[key] ?? PAGE_TEMPLATES[key].title,
           custom: false,
           filled: filled(rows.find((p) => p.key === key)?.content ?? {}),
         })),
         ...rows
           .filter((p) => p.isCustom)
-          .map((p) => ({ key: p.key, title: p.title, custom: true, filled: filled(p.content) })),
+          .map((p) => ({
+            key: p.key,
+            title: t_("page", p.key, "title", p.title),
+            custom: true,
+            filled: filled(p.content),
+          })),
       ],
     });
   });
@@ -164,6 +189,8 @@ export function publicRoutes(db: Database) {
   /** Eén pagina; foto-velden zijn uitgewerkt tot { id, path }. Lege velden ontbreken niet (altijd ""). */
   r.get("/pages/:key", async (c) => {
     const t = c.get("tenant");
+    const t_ = await tr(c);
+    const lang = langOf(c);
     const key = c.req.param("key");
     const [row] = await db
       .select()
@@ -175,11 +202,21 @@ export function publicRoutes(db: Database) {
     const content: Record<string, unknown> = {};
     for (const f of template.fields) {
       const v = row?.content[f.key] ?? "";
-      content[f.key] = f.type === "photo" ? (v ? { id: v, path: mediaPath(v, 1600) } : null) : v;
+      content[f.key] =
+        f.type === "photo"
+          ? v
+            ? { id: v, path: mediaPath(v, 1600) }
+            : null
+          : f.type === "text" || f.type === "textarea"
+            ? t_("page", key, f.key, v)
+            : v;
     }
     return c.json({
       key,
-      title: row?.title ?? PAGE_TEMPLATES[key as keyof typeof PAGE_TEMPLATES].title,
+      title: fixedKeys.includes(key)
+        ? (FIXED_PAGE_TITLES[lang as LocaleId]?.[key as "home"] ??
+          PAGE_TEMPLATES[key as keyof typeof PAGE_TEMPLATES].title)
+        : t_("page", key, "title", row?.title ?? key),
       custom: !fixedKeys.includes(key),
       content,
     });
@@ -188,6 +225,7 @@ export function publicRoutes(db: Database) {
   /** Komende keren van evenementen (wekelijkse zijn al uitgeklapt), op datum gesorteerd. */
   r.get("/events", async (c) => {
     const t = c.get("tenant");
+    const t_ = await tr(c);
     const { date: today } = localParts(new Date(), t.timezone);
     const limit = Math.min(50, Math.max(1, Number(c.req.query("limit")) || 20));
     const rows = await db.select().from(events).where(eq(events.tenantId, t.id));
@@ -197,8 +235,8 @@ export function publicRoutes(db: Database) {
         date,
         startTime: e.startTime,
         endTime: e.endTime,
-        title: e.title,
-        description: e.description,
+        title: t_("event", e.id, "title", e.title),
+        description: t_("event", e.id, "description", e.description),
         priceCents: e.priceCents,
         ticketUrl: e.ticketUrl,
         recurring: e.repeat === "weekly",
@@ -210,17 +248,23 @@ export function publicRoutes(db: Database) {
   // Alleen wat vandaag geldt; de site hoeft niet zelf te filteren op datum.
   r.get("/announcements", async (c) => {
     const t = c.get("tenant");
+    const t_ = await tr(c);
     const { date } = localParts(new Date(), t.timezone);
     const rows = await db.select().from(announcements).where(eq(announcements.tenantId, t.id));
     return c.json({
       announcements: rows
         .filter((a) => isActiveOn(date, a.startsOn, a.endsOn))
-        .map((a) => ({ id: a.id, text: a.text, endsOn: a.endsOn })),
+        .map((a) => ({
+          id: a.id,
+          text: t_("announcement", a.id, "text", a.text),
+          endsOn: a.endsOn,
+        })),
     });
   });
 
   r.get("/specials", async (c) => {
     const t = c.get("tenant");
+    const t_ = await tr(c);
     const { date } = localParts(new Date(), t.timezone);
     const rows = await db
       .select()
@@ -232,8 +276,8 @@ export function publicRoutes(db: Database) {
         .filter((x) => isActiveOn(date, x.startsOn, x.endsOn))
         .map((x) => ({
           id: x.id,
-          name: x.name,
-          description: x.description,
+          name: t_("special", x.id, "name", x.name),
+          description: t_("special", x.id, "description", x.description),
           priceCents: x.priceCents,
           startsOn: x.startsOn,
           endsOn: x.endsOn,

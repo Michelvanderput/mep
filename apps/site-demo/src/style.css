@@ -223,3 +223,25 @@ main p {
 a {
   color: var(--accent);
 }
+.langs {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+}
+.langs[hidden] {
+  display: none;
+}
+.langs button {
+  border: 1.5px solid var(--ink);
+  background: transparent;
+  border-radius: 8px;
+  padding: 2px 10px;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.langs button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--bg);
+}

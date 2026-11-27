@@ -67,6 +67,21 @@ describe("sdk", () => {
     await expect(c.hours()).rejects.toBeInstanceOf(MepError);
   });
 
+  test("lang wordt aan elk verzoek toegevoegd", async () => {
+    const urls: string[] = [];
+    const f = (async (url: string) => {
+      urls.push(url);
+      return jsonResponse({ menus: [], events: [] });
+    }) as unknown as typeof fetch;
+    const c = createClient({ baseUrl: "https://x/api", tenant: "haven", fetch: f, lang: "en" });
+    await c.menus();
+    await c.events(5);
+    expect(urls).toEqual([
+      "https://x/api/public/haven/menus?lang=en",
+      "https://x/api/public/haven/events?limit=5&lang=en",
+    ]);
+  });
+
   test("submit geeft de foutmelding van de server door", async () => {
     const f = (async () =>
       jsonResponse({ error: "Zaak niet gevonden" }, 404)) as unknown as typeof fetch;
