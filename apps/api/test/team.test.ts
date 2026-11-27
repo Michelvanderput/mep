@@ -181,16 +181,14 @@ describe("beveiliging en opruimen", () => {
     expect((await post("ander@example.nl")).status).toBe(201);
 
     await db.delete(submissions);
-    await db
-      .insert(submissions)
-      .values(
-        Array.from({ length: 60 }, (_, i) => ({
-          tenantId,
-          name: "B",
-          email: `b${i}@x.nl`,
-          message: "x",
-        })),
-      );
+    await db.insert(submissions).values(
+      Array.from({ length: 60 }, (_, i) => ({
+        tenantId,
+        name: "B",
+        email: `b${i}@x.nl`,
+        message: "x",
+      })),
+    );
     expect((await post("nieuw@example.nl")).status).toBe(429);
   });
 
