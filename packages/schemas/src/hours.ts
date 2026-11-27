@@ -59,8 +59,12 @@ const toMinutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 
 
 export interface OpenStatus {
   open: boolean;
-  /** Korte tekst voor ondernemer en website, bv. "Nu open · tot 22:00". */
+  /** Korte Nederlandse tekst voor de ondernemer, bv. "Nu open · tot 22:00". Websites gebruiken `formatOpenStatus`. */
   label: string;
+  /** Machineleesbare toestand, voor vertaalde weergave. */
+  state: "open" | "opens_later" | "closed" | "closed_today";
+  /** Sluitingstijd (bij `open`) of openingstijd (bij `opens_later`), HH:MM. */
+  time?: string;
   todaySlots: Slot[];
   exception: HoursException | null;
 }
@@ -84,13 +88,28 @@ export function computeOpenStatus(input: {
     (s) => toMinutes(s.open) <= minutes && minutes < toMinutes(s.close),
   );
   if (current)
-    return { open: true, label: `Nu open · tot ${current.close}`, todaySlots, exception };
+    return {
+      open: true,
+      state: "open",
+      time: current.close,
+      label: `Nu open · tot ${current.close}`,
+      todaySlots,
+      exception,
+    };
 
   const next = todaySlots.find((s) => toMinutes(s.open) > minutes);
   if (next)
-    return { open: false, label: `Nu gesloten · opent ${next.open}`, todaySlots, exception };
+    return {
+      open: false,
+      state: "opens_later",
+      time: next.open,
+      label: `Nu gesloten · opent ${next.open}`,
+      todaySlots,
+      exception,
+    };
   return {
     open: false,
+    state: todaySlots.length === 0 ? "closed_today" : "closed",
     label: todaySlots.length === 0 ? "Vandaag gesloten" : "Nu gesloten",
     todaySlots,
     exception,

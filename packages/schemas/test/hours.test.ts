@@ -154,3 +154,43 @@ describe("evenementen", () => {
     );
   });
 });
+
+import { formatOpenStatus } from "../src";
+
+describe("vertaalde status", () => {
+  test("alle toestanden in alle talen, onbekende taal valt terug op Nederlands", () => {
+    expect(formatOpenStatus({ state: "open", time: "22:00" }, "en")).toBe("Open now · until 22:00");
+    expect(formatOpenStatus({ state: "opens_later", time: "17:00" }, "de")).toBe(
+      "Jetzt geschlossen · öffnet 17:00",
+    );
+    expect(formatOpenStatus({ state: "closed_today" }, "fr")).toBe("Fermé aujourd'hui");
+    expect(formatOpenStatus({ state: "closed" }, "xx")).toBe("Nu gesloten");
+    expect(formatOpenStatus({ state: "open", time: "22:00" })).toBe("Nu open · tot 22:00");
+  });
+
+  test("computeOpenStatus geeft state en time mee", () => {
+    const day = [{ open: "12:00", close: "22:00" }];
+    const week = [day, day, day, day, day, day, day];
+    const s = computeOpenStatus({
+      schedule: week,
+      exceptions: [],
+      now: new Date("2026-05-12T10:00:00Z"),
+      timeZone: "Europe/Amsterdam",
+    });
+    expect(s).toMatchObject({ state: "open", time: "22:00" });
+  });
+});
+
+import { allergenLabelFor, dietLabelFor, formatDateLong } from "../src";
+
+describe("vertaalde labels", () => {
+  test("allergenen, dieet en datum", () => {
+    expect(allergenLabelFor("nuts", "en")).toBe("Tree nuts");
+    expect(allergenLabelFor("fish", "de")).toBe("Fisch");
+    expect(allergenLabelFor("fish")).toBe("Vis");
+    expect(allergenLabelFor("fish", "xx")).toBe("Vis");
+    expect(dietLabelFor("glutenfree", "fr")).toBe("Sans gluten");
+    expect(formatDateLong("2026-11-27", "en")).toMatch(/Friday/);
+    expect(formatDateLong("2026-11-27", "nl")).toMatch(/vrijdag/);
+  });
+});

@@ -63,3 +63,206 @@ export const saveTranslationSchema = z.object({
   entityId: z.string().min(1).max(100),
   fields: z.record(z.string().max(40), z.string().max(3000)),
 });
+
+// ---------------------------------------------------------------------------
+// Vertaalde weergave van openingstijden (voor websites)
+// ---------------------------------------------------------------------------
+
+type Dict = {
+  open: (t: string) => string;
+  opensLater: (t: string) => string;
+  closed: string;
+  closedToday: string;
+  closedDay: string;
+  and: string;
+  daysLong: string[];
+  daysShort: string[];
+};
+
+const DICT: Record<LocaleId, Dict> = {
+  nl: {
+    open: (t) => `Nu open · tot ${t}`,
+    opensLater: (t) => `Nu gesloten · opent ${t}`,
+    closed: "Nu gesloten",
+    closedToday: "Vandaag gesloten",
+    closedDay: "Gesloten",
+    and: "en",
+    daysLong: ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"],
+    daysShort: ["ma", "di", "wo", "do", "vr", "za", "zo"],
+  },
+  en: {
+    open: (t) => `Open now · until ${t}`,
+    opensLater: (t) => `Closed now · opens ${t}`,
+    closed: "Closed now",
+    closedToday: "Closed today",
+    closedDay: "Closed",
+    and: "and",
+    daysLong: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+    daysShort: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+  },
+  de: {
+    open: (t) => `Jetzt geöffnet · bis ${t}`,
+    opensLater: (t) => `Jetzt geschlossen · öffnet ${t}`,
+    closed: "Jetzt geschlossen",
+    closedToday: "Heute geschlossen",
+    closedDay: "Geschlossen",
+    and: "und",
+    daysLong: ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"],
+    daysShort: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"],
+  },
+  fr: {
+    open: (t) => `Ouvert · jusqu'à ${t}`,
+    opensLater: (t) => `Fermé · ouvre à ${t}`,
+    closed: "Fermé",
+    closedToday: "Fermé aujourd'hui",
+    closedDay: "Fermé",
+    and: "et",
+    daysLong: ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"],
+    daysShort: ["lun", "mar", "mer", "jeu", "ven", "sam", "dim"],
+  },
+};
+
+/** Onbekende taal valt terug op Nederlands. */
+export const dictFor = (lang?: string): Dict =>
+  DICT[(lang && lang in DICT ? lang : DEFAULT_LOCALE) as LocaleId];
+
+export function formatOpenStatus(
+  status: { state: "open" | "opens_later" | "closed" | "closed_today"; time?: string },
+  lang?: string,
+): string {
+  const d = dictFor(lang);
+  switch (status.state) {
+    case "open":
+      return d.open(status.time ?? "");
+    case "opens_later":
+      return d.opensLater(status.time ?? "");
+    case "closed_today":
+      return d.closedToday;
+    default:
+      return d.closed;
+  }
+}
+
+// Allergenen en dieetlabels per taal (voor websites); Nederlands staat in ./menu.
+const ALLERGEN_LABELS: Record<Exclude<LocaleId, "nl">, Record<string, string>> = {
+  en: {
+    gluten: "Gluten",
+    crustaceans: "Crustaceans",
+    eggs: "Eggs",
+    fish: "Fish",
+    peanuts: "Peanuts",
+    soy: "Soy",
+    milk: "Milk",
+    nuts: "Tree nuts",
+    celery: "Celery",
+    mustard: "Mustard",
+    sesame: "Sesame",
+    sulphites: "Sulphites",
+    lupin: "Lupin",
+    molluscs: "Molluscs",
+  },
+  de: {
+    gluten: "Gluten",
+    crustaceans: "Krebstiere",
+    eggs: "Eier",
+    fish: "Fisch",
+    peanuts: "Erdnüsse",
+    soy: "Soja",
+    milk: "Milch",
+    nuts: "Schalenfrüchte",
+    celery: "Sellerie",
+    mustard: "Senf",
+    sesame: "Sesam",
+    sulphites: "Sulfite",
+    lupin: "Lupinen",
+    molluscs: "Weichtiere",
+  },
+  fr: {
+    gluten: "Gluten",
+    crustaceans: "Crustacés",
+    eggs: "Œufs",
+    fish: "Poisson",
+    peanuts: "Arachides",
+    soy: "Soja",
+    milk: "Lait",
+    nuts: "Fruits à coque",
+    celery: "Céleri",
+    mustard: "Moutarde",
+    sesame: "Sésame",
+    sulphites: "Sulfites",
+    lupin: "Lupin",
+    molluscs: "Mollusques",
+  },
+};
+const DIET_LABELS: Record<Exclude<LocaleId, "nl">, Record<string, string>> = {
+  en: {
+    vegetarian: "Vegetarian",
+    vegan: "Vegan",
+    glutenfree: "Gluten-free",
+    lactosefree: "Lactose-free",
+    halal: "Halal",
+    spicy: "Spicy",
+  },
+  de: {
+    vegetarian: "Vegetarisch",
+    vegan: "Vegan",
+    glutenfree: "Glutenfrei",
+    lactosefree: "Laktosefrei",
+    halal: "Halal",
+    spicy: "Scharf",
+  },
+  fr: {
+    vegetarian: "Végétarien",
+    vegan: "Végan",
+    glutenfree: "Sans gluten",
+    lactosefree: "Sans lactose",
+    halal: "Halal",
+    spicy: "Épicé",
+  },
+};
+const NL_ALLERGENS: Record<string, string> = {
+  gluten: "Gluten",
+  crustaceans: "Schaaldieren",
+  eggs: "Ei",
+  fish: "Vis",
+  peanuts: "Pinda's",
+  soy: "Soja",
+  milk: "Melk",
+  nuts: "Noten",
+  celery: "Selderij",
+  mustard: "Mosterd",
+  sesame: "Sesam",
+  sulphites: "Sulfiet",
+  lupin: "Lupine",
+  molluscs: "Weekdieren",
+};
+const NL_DIETS: Record<string, string> = {
+  vegetarian: "Vegetarisch",
+  vegan: "Veganistisch",
+  glutenfree: "Glutenvrij",
+  lactosefree: "Lactosevrij",
+  halal: "Halal",
+  spicy: "Pittig",
+};
+
+const pick = (
+  table: Record<string, Record<string, string>>,
+  nl: Record<string, string>,
+  id: string,
+  lang?: string,
+) => (lang && lang !== DEFAULT_LOCALE ? table[lang]?.[id] : undefined) ?? nl[id] ?? id;
+export const allergenLabelFor = (id: string, lang?: string) =>
+  pick(ALLERGEN_LABELS, NL_ALLERGENS, id, lang);
+export const dietLabelFor = (id: string, lang?: string) => pick(DIET_LABELS, NL_DIETS, id, lang);
+
+/** Datum als "vrijdag 27 november" in de taal van de site (zonder tijdzoneproblemen). */
+export const formatDateLong = (isoDate: string, lang?: string) =>
+  new Date(`${isoDate}T12:00:00Z`).toLocaleDateString(
+    lang && lang in LOCALE_INFO ? lang : DEFAULT_LOCALE,
+    {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      timeZone: "UTC",
+    },
+  );

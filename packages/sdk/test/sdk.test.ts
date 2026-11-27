@@ -91,3 +91,25 @@ describe("sdk", () => {
     );
   });
 });
+
+describe("sdk in andere talen", () => {
+  const f = (async () => jsonResponse({})) as unknown as typeof fetch;
+  test("status, weekrijen en labels in de taal van de client", () => {
+    const en = createClient({ baseUrl: "https://x/api", tenant: "haven", fetch: f, lang: "en" });
+    expect(en.openStatus(hours, new Date("2026-05-12T17:00:00Z")).label).toBe(
+      "Open now · until 22:00",
+    );
+    expect(en.openStatus(hours, new Date("2026-05-11T17:00:00Z")).label).toBe("Closed today");
+    expect(en.week(hours.venue)).toEqual([
+      { days: "Mon", text: "Closed" },
+      { days: "Tue–Thu", text: "17:00–22:00" },
+      { days: "Fri–Sat", text: "12:00–23:00" },
+      { days: "Sun", text: "Closed" },
+    ]);
+    expect(en.allergenLabel("molluscs")).toBe("Molluscs");
+    expect(en.dietLabel("vegan")).toBe("Vegan");
+    expect(en.formatDate("2026-11-27")).toMatch(/Friday/);
+    const nl = createClient({ baseUrl: "https://x/api", tenant: "haven", fetch: f });
+    expect(nl.week(hours.venue)[0]).toEqual({ days: "ma", text: "Gesloten" });
+  });
+});

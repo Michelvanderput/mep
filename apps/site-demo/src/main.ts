@@ -1,13 +1,10 @@
 import {
-  allergenLabel,
   contactFields,
   createClient,
-  dietLabel,
   formatPrice,
   type Hours,
   type Menu,
   paragraphs,
-  weekRowsGrouped,
 } from "@mep/sdk";
 import "./style.css";
 
@@ -21,11 +18,98 @@ let mep = createClient({
   tenant: import.meta.env.VITE_MEP_TENANT ?? "bistro-de-haven",
 });
 
+// Koppen en vaste teksten van je eigen site vertaal je zelf; de SDK doet status, dagen, allergenen en datums.
+const UI: Record<string, Record<string, string>> = {
+  nl: {
+    hours: "Openingstijden",
+    special: "Vandaag speciaal",
+    agenda: "Agenda",
+    menu: "Menukaart",
+    location: "Adres en route",
+    contact: "Contact of groepsaanvraag",
+    allergyNote:
+      "Heb je een allergie? Vraag het de bediening, ook als er hieronder niets bij staat.",
+    name: "Naam",
+    email: "E-mail",
+    message: "Bericht",
+    send: "Verstuur",
+    contains: "Bevat",
+    soldOut: "Op",
+    weekly: "wekelijks",
+    tickets: "Tickets",
+    thanks: "Bedankt! We nemen snel contact op.",
+    access: "Toegankelijkheid",
+  },
+  en: {
+    hours: "Opening hours",
+    special: "Today's special",
+    agenda: "What's on",
+    menu: "Menu",
+    location: "Address and directions",
+    contact: "Contact or group booking",
+    allergyNote: "Do you have an allergy? Please ask our staff, even if nothing is listed below.",
+    name: "Name",
+    email: "Email",
+    message: "Message",
+    send: "Send",
+    contains: "Contains",
+    soldOut: "Sold out",
+    weekly: "weekly",
+    tickets: "Tickets",
+    thanks: "Thank you! We will be in touch soon.",
+    access: "Accessibility",
+  },
+  de: {
+    hours: "Öffnungszeiten",
+    special: "Heute besonders",
+    agenda: "Veranstaltungen",
+    menu: "Speisekarte",
+    location: "Adresse und Anfahrt",
+    contact: "Kontakt oder Gruppenanfrage",
+    allergyNote:
+      "Haben Sie eine Allergie? Fragen Sie bitte unser Team, auch wenn unten nichts steht.",
+    name: "Name",
+    email: "E-Mail",
+    message: "Nachricht",
+    send: "Senden",
+    contains: "Enthält",
+    soldOut: "Ausverkauft",
+    weekly: "wöchentlich",
+    tickets: "Tickets",
+    thanks: "Danke! Wir melden uns bald.",
+    access: "Barrierefreiheit",
+  },
+  fr: {
+    hours: "Horaires",
+    special: "Suggestion du jour",
+    agenda: "Agenda",
+    menu: "Carte",
+    location: "Adresse et accès",
+    contact: "Contact ou groupe",
+    allergyNote: "Une allergie ? Demandez à notre équipe, même si rien n'est indiqué ci-dessous.",
+    name: "Nom",
+    email: "E-mail",
+    message: "Message",
+    send: "Envoyer",
+    contains: "Contient",
+    soldOut: "Épuisé",
+    weekly: "chaque semaine",
+    tickets: "Billets",
+    thanks: "Merci ! Nous vous répondrons bientôt.",
+    access: "Accessibilité",
+  },
+};
+let lang = "nl";
+const t = (k: string) => UI[lang]?.[k] ?? UI.nl?.[k] ?? k;
+
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
-async function init(lang?: string) {
+async function init(langArg?: string) {
+  lang = langArg ?? "nl";
   mep = createClient({ ...MEP, lang });
+  for (const el of document.querySelectorAll<HTMLElement>("[data-t]"))
+    el.textContent = t(el.dataset.t ?? "");
   const [info, hours, menus, announcements, specials, agenda] = await Promise.all([
     mep.info(),
     mep.hours(),
@@ -37,10 +121,7 @@ async function init(lang?: string) {
   const langs = $("langs");
   langs.hidden = info.locales.length < 2;
   langs.innerHTML = info.locales
-    .map(
-      (l) =>
-        `<button data-lang="${l}" aria-pressed="${(lang ?? "nl") === l}">${l.toUpperCase()}</button>`,
-    )
+    .map((l) => `<button data-lang="${l}" aria-pressed="${lang === l}">${l.toUpperCase()}</button>`)
     .join("");
   langs.onclick = (e) => {
     const l = (e.target as HTMLElement).dataset.lang;
@@ -55,7 +136,8 @@ async function init(lang?: string) {
   renderBadge(hours);
   setInterval(() => renderBadge(hours), 30_000); // blijft kloppen op een gecachte pagina
 
-  $("hours-list").innerHTML = weekRowsGrouped(hours.venue)
+  $("hours-list").innerHTML = mep
+    .week(hours.venue)
     .map((r) => `<div><dt>${r.days}</dt><dd>${r.text}</dd></div>`)
     .join("");
   $("exceptions").innerHTML = hours.exceptions
@@ -91,21 +173,16 @@ async function init(lang?: string) {
     ${paragraphs(c.route)
       .map((p) => `<p>${esc(p)}</p>`)
       .join("")}
-    ${c.accessibility ? `<p><b>Toegankelijkheid:</b> ${esc(c.accessibility)}</p>` : ""}
+    ${c.accessibility ? `<p><b>${t("access")}:</b> ${esc(c.accessibility)}</p>` : ""}
     ${c.instagram ? `<p><a href="${esc(c.instagram)}" rel="noopener">Instagram</a></p>` : ""}`;
 
   $("agenda").hidden = agenda.length === 0;
   $("agenda-list").innerHTML = agenda
     .map((e) => {
-      const d = new Date(`${e.date}T12:00:00Z`).toLocaleDateString("nl-NL", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        timeZone: "UTC",
-      });
+      const d = mep.formatDate(e.date);
       return `<li><div class="body"><div class="line"><b>${esc(e.title)}</b>${e.priceCents !== null ? `<span class="price">${formatPrice(e.priceCents)}</span>` : ""}</div>
-        <p>${d} · ${e.startTime}${e.endTime ? `–${e.endTime}` : ""}${e.recurring ? " · wekelijks" : ""}</p>
-        ${e.description ? `<p>${esc(e.description)}</p>` : ""}${e.ticketUrl ? `<p><a href="${esc(e.ticketUrl)}" rel="noopener">Tickets</a></p>` : ""}</div></li>`;
+        <p>${d} · ${e.startTime}${e.endTime ? `–${e.endTime}` : ""}${e.recurring ? ` · ${t("weekly")}` : ""}</p>
+        ${e.description ? `<p>${esc(e.description)}</p>` : ""}${e.ticketUrl ? `<p><a href="${esc(e.ticketUrl)}" rel="noopener">${t("tickets")}</a></p>` : ""}</div></li>`;
     })
     .join("");
 
@@ -145,11 +222,11 @@ function renderMenus(menus: Menu[]) {
               ${i.photo ? `<img src="${mep.photoUrl(i.photo.id, 400)}" srcset="${mep.photoSrcSet(i.photo.id)}" sizes="96px" width="96" height="96" alt="" loading="lazy">` : ""}
               <div class="body"><div class="line"><b>${esc(i.name)}</b><span class="price">${formatPrice(i.priceCents)}</span></div>
                 ${i.description ? `<p>${esc(i.description)}</p>` : ""}
-                <p class="tags">${i.diets.map((d) => `<span>${dietLabel(d)}</span>`).join("")}${
+                <p class="tags">${i.diets.map((d) => `<span>${mep.dietLabel(d)}</span>`).join("")}${
                   i.allergens && i.allergens.length
-                    ? `<span class="al">Bevat: ${i.allergens.map(allergenLabel).join(", ")}</span>`
+                    ? `<span class="al">${t("contains")}: ${i.allergens.map(mep.allergenLabel).join(", ")}</span>`
                     : ""
-                }${i.available ? "" : '<span class="al">Op</span>'}</p></div></li>`,
+                }${i.available ? "" : `<span class="al">${t("soldOut")}</span>`}</p></div></li>`,
             )
             .join("")}</ul>`,
       )
@@ -180,7 +257,7 @@ $("form").addEventListener("submit", async (e) => {
       },
       { website: String(f.get("website") ?? "") },
     );
-    status.textContent = "Bedankt! We nemen snel contact op.";
+    status.textContent = t("thanks");
     (e.target as HTMLFormElement).reset();
   } catch (err) {
     status.textContent = err instanceof Error ? err.message : "Versturen mislukt";

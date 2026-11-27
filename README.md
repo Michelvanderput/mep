@@ -18,7 +18,7 @@ Pagina's: vaste pagina's (Home, Over ons, Contact) met vaste velden plus eigen t
 
 Evenementen zijn eenmalig of wekelijks (bv. "elke dinsdag pubquiz", met optionele einddatum); aanmelden en tickets lopen via een ticketlink of het contactformulier.
 
-Nog te doen: nieuws, aanmeldingen voor evenementen, vertaalde SDK-labels, meertaligheid, de eerste echte Vercel-deploy en Row Level Security (nu wordt tenant-scheiding in de API afgedwongen en getest).
+Nog te doen: nieuws, aanmeldingen voor evenementen, meertaligheid, de eerste echte Vercel-deploy en Row Level Security (nu wordt tenant-scheiding in de API afgedwongen en getest).
 
 Afwijkingen van de wireframes: gerechten worden direct live opgeslagen (geen concept/voorbeeld); sorteren gaat met pijltjes in plaats van slepen.
 
@@ -102,9 +102,11 @@ foto's vooraf. De functie is lokaal als bundel getest (routing en sharp), maar n
 De eigenaar zet talen aan (Engels, Duits, Frans; Nederlands is de brontaal) en vult vertalingen in onder Meer →
 Vertalingen: kaart, categorieën, gerechten, pagina's, evenementen, specials en meldingen, met voortgang en een filter op
 wat nog ontbreekt. De publieke API en SDK (`lang`) leveren de vertaalde tekst en vallen per tekst terug op Nederlands.
-Vaste paginatitels (Home, Over ons, Contact) hebben ingebouwde vertalingen. Nog Nederlands, ook als `lang` is gezet:
-labels die de SDK zelf maakt ("Nu open · tot 22:00", weekdagen) en de koppen van je eigen site; die vertaal je in het
-sitesjabloon. Een automatische vertaalsuggestie (AI) staat er niet in.
+Vaste paginatitels (Home, Over ons, Contact) hebben ingebouwde vertalingen. De SDK vertaalt zelf wat niet van de
+ondernemer komt, in de taal van de client: de open/dicht-status (`mep.openStatus(hours).label`), openingstijden per dag
+(`mep.week(hours.venue)`), allergenen en dieetlabels (`mep.allergenLabel`, `mep.dietLabel`) en datums
+(`mep.formatDate`). De koppen en vaste teksten van je eigen site vertaal je in het sitesjabloon; `apps/site-demo`
+laat zien hoe (woordenlijst `UI`). Een automatische vertaalsuggestie (AI) staat er niet in.
 
 ## Team, veiligheid en AVG
 

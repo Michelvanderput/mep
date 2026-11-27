@@ -1,7 +1,10 @@
 import {
-  ALLERGENS,
+  allergenLabelFor,
   computeOpenStatus,
-  DIETS,
+  dictFor,
+  dietLabelFor,
+  formatDateLong,
+  formatOpenStatus,
   formatPrice,
   type HoursException,
   MEDIA_WIDTHS,
@@ -169,22 +172,32 @@ export function createClient(opts: MepClientOptions) {
     events: async (limit = 20) =>
       (await get<{ events: EventOccurrence[] }>(`/events?limit=${limit}`)).events,
 
+    /** Open/dicht op dit moment; `label` staat in de taal van de client. */
     openStatus(hours: Hours, now: Date = new Date()): OpenStatus {
-      return computeOpenStatus({
+      const status = computeOpenStatus({
         schedule: hours.venue,
         exceptions: hours.exceptions,
         now,
         timeZone: hours.timezone,
       });
+      return { ...status, label: formatOpenStatus(status, opts.lang) };
     },
     kitchenStatus(hours: Hours, now: Date = new Date()): OpenStatus {
-      return computeOpenStatus({
+      const status = computeOpenStatus({
         schedule: hours.kitchen,
         exceptions: [],
         now,
         timeZone: hours.timezone,
       });
+      return { ...status, label: formatOpenStatus(status, opts.lang) };
     },
+
+    /** Openingstijden per dag(groep) in de taal van de client. */
+    week: (schedule: WeekSchedule) => weekRowsGrouped(schedule, opts.lang),
+    allergenLabel: (id: string) => allergenLabelFor(id, opts.lang),
+    dietLabel: (id: string) => dietLabelFor(id, opts.lang),
+    /** "vrijdag 27 november" / "Friday, November 27". */
+    formatDate: (isoDate: string) => formatDateLong(isoDate, opts.lang),
 
     photoUrl: (id: string, width: (typeof MEDIA_WIDTHS)[number] = 800) =>
       `${base}${mediaPath(id, width)}`,
@@ -214,33 +227,42 @@ export function createClient(opts: MepClientOptions) {
 // Hulpfuncties voor weergave
 // ---------------------------------------------------------------------------
 
-const DAY_LONG = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"];
-const DAY_SHORT = ["ma", "di", "wo", "do", "vr", "za", "zo"];
-
-export const formatSlots = (slots: Slot[]) =>
-  slots.length === 0 ? "Gesloten" : slots.map((s) => `${s.open}–${s.close}`).join(" en ");
+export const formatSlots = (slots: Slot[], lang?: string) => {
+  const d = dictFor(lang);
+  return slots.length === 0
+    ? d.closedDay
+    : slots.map((s) => `${s.open}–${s.close}`).join(` ${d.and} `);
+};
 
 /** Eén regel per dag: [{ day: "Maandag", text: "Gesloten" }, ...] */
-export function weekRows(schedule: WeekSchedule) {
-  return schedule.map((slots, i) => ({ day: DAY_LONG[i] as string, text: formatSlots(slots) }));
+export function weekRows(schedule: WeekSchedule, lang?: string) {
+  const d = dictFor(lang);
+  return schedule.map((slots, i) => ({
+    day: d.daysLong[i] as string,
+    text: formatSlots(slots, lang),
+  }));
 }
 
 /** Samengevoegd: dagen met gelijke tijden achter elkaar worden één regel ("di–do: 17:00–22:00"). */
-export function weekRowsGrouped(schedule: WeekSchedule) {
+export function weekRowsGrouped(schedule: WeekSchedule, lang?: string) {
+  const d = dictFor(lang);
   const rows: { days: string; text: string }[] = [];
   let start = 0;
   for (let i = 1; i <= 7; i++) {
-    if (i < 7 && formatSlots(schedule[i] ?? []) === formatSlots(schedule[start] ?? [])) continue;
+    if (i < 7 && formatSlots(schedule[i] ?? [], lang) === formatSlots(schedule[start] ?? [], lang))
+      continue;
     const days =
-      i - 1 === start ? (DAY_SHORT[start] as string) : `${DAY_SHORT[start]}–${DAY_SHORT[i - 1]}`;
-    rows.push({ days, text: formatSlots(schedule[start] ?? []) });
+      i - 1 === start
+        ? (d.daysShort[start] as string)
+        : `${d.daysShort[start]}–${d.daysShort[i - 1]}`;
+    rows.push({ days, text: formatSlots(schedule[start] ?? [], lang) });
     start = i;
   }
   return rows;
 }
 
-export const allergenLabel = (id: string) => ALLERGENS.find((a) => a.id === id)?.label ?? id;
-export const dietLabel = (id: string) => DIETS.find((d) => d.id === id)?.label ?? id;
+export const allergenLabel = (id: string, lang?: string) => allergenLabelFor(id, lang);
+export const dietLabel = (id: string, lang?: string) => dietLabelFor(id, lang);
 
 /** Plat te tonen tekst als alinea's (lege regel = nieuwe alinea). */
 export { paragraphs } from "@mep/schemas";
