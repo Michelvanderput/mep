@@ -18,7 +18,7 @@ Pagina's: vaste pagina's (Home, Over ons, Contact) met vaste velden plus eigen t
 
 Evenementen zijn eenmalig of wekelijks (bv. "elke dinsdag pubquiz", met optionele einddatum); aanmelden en tickets lopen via een ticketlink of het contactformulier.
 
-Nog te doen: nieuws, aanmeldingen voor evenementen, team, meertaligheid, de eerste echte Vercel-deploy en Row Level Security (nu wordt tenant-scheiding in de API afgedwongen en getest).
+Nog te doen: nieuws, aanmeldingen voor evenementen, meertaligheid, de eerste echte Vercel-deploy en Row Level Security (nu wordt tenant-scheiding in de API afgedwongen en getest).
 
 Afwijkingen van de wireframes: gerechten worden direct live opgeslagen (geen concept/voorbeeld); sorteren gaat met pijltjes in plaats van slepen.
 
@@ -89,12 +89,21 @@ Het hele platform draait in één Vercel-project: de beheer-app als statische si
 2. Voeg een **Postgres**-database toe (bv. Neon via de Marketplace) en zet `DATABASE_URL` (gepoolde URL).
 3. Maak een **Blob store** aan; `BLOB_READ_WRITE_TOKEN` wordt automatisch gezet.
 4. Maak een **Resend**-account, verifieer je afzenderdomein en zet `RESEND_API_KEY` en `MAIL_FROM`.
-5. Zet `ADMIN_URL` op de publieke URL van het project (komt in de inloglinks).
-6. Eerste keer: `DATABASE_URL=… pnpm db:migrate` en `DATABASE_URL=… pnpm mep:new-tenant --superadmin jij@example.nl`.
+5. Zet `CRON_SECRET` (willekeurige lange tekst): Vercel Cron roept dagelijks `/api/cron/cleanup` aan en ruimt verlopen inlogtokens en sessies op, en afgehandelde berichten ouder dan 12 maanden (AVG).
+6. Zet `ADMIN_URL` op de publieke URL van het project (komt in de inloglinks).
+7. Eerste keer: `DATABASE_URL=… pnpm db:migrate` en `DATABASE_URL=… pnpm mep:new-tenant --superadmin jij@example.nl`.
    Bij elke productiedeploy draaien de migraties automatisch tijdens de build.
 
 Let op: Vercel-functies accepteren maximaal 4,5 MB per request; daarom is de uploadlimiet 4 MB en verkleint de app
 foto's vooraf. De functie is lokaal als bundel getest (routing en sharp), maar nog niet op een echt Vercel-project.
+
+## Team, veiligheid en AVG
+
+- **Team:** de eigenaar nodigt collega's uit (Meer → Team en rollen) als eigenaar, manager, keuken of medewerker; ze krijgen een inloglink per mail. Er blijft altijd minstens één eigenaar over.
+- **Export:** de eigenaar kan alle gegevens van de zaak als JSON downloaden (geen lock-in, AVG-inzage).
+- **Spambeveiliging formulieren:** verborgen controleveld, max. 3 berichten per afzender per 10 minuten en 60 per zaak per uur (tellers in de database, dus geschikt voor serverless).
+- **Headers:** de API stuurt beveiligingsheaders (`nosniff`, `X-Frame-Options`, enz.); foto's blijven cross-origin laadbaar.
+- **Bewaartermijn:** afgehandelde berichten worden na 12 maanden automatisch verwijderd.
 
 ## Scripts
 

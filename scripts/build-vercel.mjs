@@ -69,6 +69,7 @@ await writeFile(
   join(out, "config.json"),
   JSON.stringify({
     version: 3,
+    crons: [{ path: "/api/cron/cleanup", schedule: "0 3 * * *" }],
     routes: [
       { src: "/api(?:/.*)?", dest: "/api" },
       { handle: "filesystem" },

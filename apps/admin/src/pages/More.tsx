@@ -41,6 +41,37 @@ export function More() {
             </div>
           </Link>
         )}
+        {can("settings") && (
+          <>
+            <Link
+              to={`/t/${slug}/team`}
+              className="card"
+              style={{ textDecoration: "none", color: "inherit" }}
+            >
+              <div className="row">
+                <div className="grow">
+                  <div className="t">Team en rollen</div>
+                  <div className="s">Nodig collega's uit en bepaal wat ze mogen</div>
+                </div>
+                <span aria-hidden>›</span>
+              </div>
+            </Link>
+            <a
+              href={`/api/t/${slug}/export`}
+              className="card"
+              style={{ textDecoration: "none", color: "inherit" }}
+              download
+            >
+              <div className="row">
+                <div className="grow">
+                  <div className="t">Alle gegevens downloaden</div>
+                  <div className="s">Een bestand met alles wat je in MEP hebt staan</div>
+                </div>
+                <span aria-hidden>↓</span>
+              </div>
+            </a>
+          </>
+        )}
         {can("events") && (
           <Link
             to={`/t/${slug}/evenementen`}

@@ -3,6 +3,8 @@ export interface Config {
   production: boolean;
   loginTokenTtlMs: number;
   sessionTtlMs: number;
+  /** Geheim voor de dagelijkse opruim-cron; zonder dit is /cron/cleanup uitgeschakeld. */
+  cronSecret?: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -11,5 +13,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     production: env.NODE_ENV === "production",
     loginTokenTtlMs: 15 * 60 * 1000,
     sessionTtlMs: 30 * 24 * 60 * 60 * 1000,
+    cronSecret: env.CRON_SECRET,
   };
 }

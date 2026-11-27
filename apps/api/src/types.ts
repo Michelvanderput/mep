@@ -5,10 +5,10 @@ export type User = typeof users.$inferSelect;
 export type Tenant = typeof tenants.$inferSelect;
 export type Env = { Variables: { user: User | null; tenant: Tenant; role: Role } };
 
-export type Area = "today" | "menu" | "hours" | "inbox" | "media" | "pages" | "events";
+export type Area = "today" | "menu" | "hours" | "inbox" | "media" | "pages" | "events" | "settings";
 
 const ACCESS: Record<Role, Area[]> = {
-  owner: ["today", "menu", "hours", "inbox", "media", "pages", "events"],
+  owner: ["today", "menu", "hours", "inbox", "media", "pages", "events", "settings"],
   manager: ["today", "menu", "hours", "inbox", "media", "pages", "events"],
   kitchen: ["today", "menu", "media"],
   staff: ["today", "inbox", "media", "pages", "events"],

@@ -11,6 +11,7 @@ import { More } from "./pages/More";
 import { PageEditor } from "./pages/PageEditor";
 import { PagesList } from "./pages/Pages";
 import { Photos } from "./pages/Photos";
+import { Team } from "./pages/Team";
 import { TenantShell } from "./pages/TenantShell";
 import { Tenants } from "./pages/Tenants";
 import { Today } from "./pages/Today";
@@ -29,6 +30,7 @@ export function App() {
         <Route path="tijden" element={<Hours />} />
         <Route path="inbox" element={<Inbox />} />
         <Route path="fotos" element={<Photos />} />
+        <Route path="team" element={<Team />} />
         <Route path="evenementen" element={<EventsList />} />
         <Route path="evenementen/:id" element={<EventEditor />} />
         <Route path="paginas" element={<PagesList />} />

@@ -7,12 +7,14 @@ import {
   requestLoginSchema,
   verifyLoginSchema,
 } from "@mep/schemas";
-import { desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, gte } from "drizzle-orm";
 import { Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { cors } from "hono/cors";
 import { createMiddleware } from "hono/factory";
+import { secureHeaders } from "hono/secure-headers";
 import { destroySession, findSessionUser, requestLogin, verifyLogin } from "./auth";
+import { runCleanup } from "./cleanup";
 import type { Config } from "./config";
 import type { Mailer } from "./mailer";
 import { publicRoutes } from "./routes/public";
@@ -32,6 +34,9 @@ export interface Deps {
 
 export function createApp({ db, mailer, config, storage }: Deps) {
   const app = new Hono<Env>();
+
+  // Foto's moeten op klantwebsites (andere origin) geladen kunnen worden, vandaar cross-origin.
+  app.use(secureHeaders({ crossOriginResourcePolicy: "cross-origin" }));
 
   app.use(
     createMiddleware<Env>(async (c, next) => {
@@ -127,8 +132,16 @@ export function createApp({ db, mailer, config, storage }: Deps) {
     },
   );
 
+  // --- Dagelijkse opruiming (Vercel Cron stuurt "Authorization: Bearer $CRON_SECRET") ---
+  app.get("/cron/cleanup", async (c) => {
+    if (!config.cronSecret) return c.json({ error: "Niet beschikbaar" }, 404);
+    if (c.req.header("authorization") !== `Bearer ${config.cronSecret}`)
+      return c.json({ error: "Niet toegestaan" }, 401);
+    return c.json({ ok: true, removed: await runCleanup(db) });
+  });
+
   // --- Beheer per zaak ---
-  app.route("/t/:slug", tenantRoutes(db, storage));
+  app.route("/t/:slug", tenantRoutes(db, storage, { mailer, config }));
 
   // --- Publiek: foto's (onraadbare id's, onveranderlijk dus lang cachebaar) ---
   app.get("/media/:id/:file", async (c) => {
@@ -165,6 +178,35 @@ export function createApp({ db, mailer, config, storage }: Deps) {
       .limit(1);
     if (!tenant || tenant.status !== "active") return c.json({ error: "Zaak niet gevonden" }, 404);
     const b = c.req.valid("json");
+
+    // Spambeveiliging (werkt ook serverless, want de tellers staan in de database):
+    // per zaak max. 60 berichten per uur, per afzender max. 3 per 10 minuten.
+    const since = (ms: number) => new Date(Date.now() - ms);
+    const [{ perTenant } = { perTenant: 0 }] = await db
+      .select({ perTenant: count() })
+      .from(submissions)
+      .where(
+        and(eq(submissions.tenantId, tenant.id), gte(submissions.createdAt, since(3_600_000))),
+      );
+    const [{ perSender } = { perSender: 0 }] = await db
+      .select({ perSender: count() })
+      .from(submissions)
+      .where(
+        and(
+          eq(submissions.tenantId, tenant.id),
+          eq(submissions.email, b.email),
+          gte(submissions.createdAt, since(600_000)),
+        ),
+      );
+    if (perTenant >= 60 || perSender >= 3) {
+      return c.json(
+        {
+          error: "Je hebt net al een bericht gestuurd. Probeer het over een paar minuten opnieuw.",
+        },
+        429,
+      );
+    }
+
     await db.insert(submissions).values({
       tenantId: tenant.id,
       type: b.type,

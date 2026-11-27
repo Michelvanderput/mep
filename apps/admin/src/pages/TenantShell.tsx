@@ -4,9 +4,9 @@ import { Navigate, NavLink, Outlet, useLocation, useNavigate, useParams } from "
 import { api, type Me, useLoad } from "../api";
 import { ErrorBox, icons, Spinner } from "../components/ui";
 
-type Area = "today" | "menu" | "hours" | "inbox" | "media" | "pages" | "events";
+type Area = "today" | "menu" | "hours" | "inbox" | "media" | "pages" | "events" | "settings";
 const ACCESS: Record<Role, Area[]> = {
-  owner: ["today", "menu", "hours", "inbox", "media", "pages", "events"],
+  owner: ["today", "menu", "hours", "inbox", "media", "pages", "events", "settings"],
   manager: ["today", "menu", "hours", "inbox", "media", "pages", "events"],
   kitchen: ["today", "menu", "media"],
   staff: ["today", "inbox", "media", "pages", "events"],

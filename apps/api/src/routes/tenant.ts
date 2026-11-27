@@ -6,6 +6,7 @@ import {
   events as eventsTable,
   mediaAssets,
   memberships,
+  memberships as membershipsTable,
   menuItems,
   menuSections,
   menus,
@@ -15,11 +16,13 @@ import {
   specials,
   submissions,
   tenants,
+  users as usersTable,
 } from "@mep/db";
 import {
   announcementInputSchema,
   computeOpenStatus,
   createPageSchema,
+  emailSchema,
   eventInputSchema,
   exceptionInputSchema,
   expandOccurrences,
@@ -30,11 +33,13 @@ import {
   localParts,
   MAX_UPLOAD_BYTES,
   mediaPatchSchema,
+  mediaPath,
   nameSchema,
   orderSchema,
   overrideTodaySchema,
   PAGE_TEMPLATES,
   pageContentSchema,
+  ROLES,
   type Role,
   savePageSchema,
   slotSchema,
@@ -50,12 +55,19 @@ import { and, asc, count, desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { z } from "zod";
+import { sendLoginLink } from "../auth";
+import type { Config } from "../config";
 import { loadHours as loadHoursFor } from "../hours";
 import { InvalidImageError, processImage } from "../images";
+import type { Mailer } from "../mailer";
 import type { Storage } from "../storage";
 import { type Area, can, type Env } from "../types";
 
-export function tenantRoutes(db: Database, storage: Storage) {
+export function tenantRoutes(
+  db: Database,
+  storage: Storage,
+  ctx: { mailer: Mailer; config: Config },
+) {
   const r = new Hono<Env>();
 
   // Laad de zaak en controleer lidmaatschap (superadmin telt als eigenaar).
@@ -709,6 +721,177 @@ export function tenantRoutes(db: Database, storage: Storage) {
       .where(and(eq(eventsTable.id, c.req.param("id")), eq(eventsTable.tenantId, tenant.id)));
     await audit(c, "event.delete", c.req.param("id"));
     return c.json({ ok: true });
+  });
+
+  // --------------------------- Team en export (alleen eigenaar) ---------------------------
+  const roleSchema = z.enum(ROLES);
+
+  const listTeam = async (tenantId: string) =>
+    db
+      .select({
+        userId: usersTable.id,
+        email: usersTable.email,
+        name: usersTable.name,
+        role: membershipsTable.role,
+      })
+      .from(membershipsTable)
+      .innerJoin(usersTable, eq(usersTable.id, membershipsTable.userId))
+      .where(eq(membershipsTable.tenantId, tenantId))
+      .orderBy(asc(membershipsTable.createdAt));
+
+  /** Er moet altijd minstens één eigenaar overblijven, anders kan niemand het team meer beheren. */
+  const wouldRemoveLastOwner = async (tenantId: string, userId: string) => {
+    const team = await listTeam(tenantId);
+    const target = team.find((m) => m.userId === userId);
+    return target?.role === "owner" && team.filter((m) => m.role === "owner").length <= 1;
+  };
+
+  r.get("/team", need("settings"), async (c) => {
+    const me = c.get("user")?.id;
+    const team = await listTeam(c.get("tenant").id);
+    return c.json({ team: team.map((m) => ({ ...m, isYou: m.userId === me })) });
+  });
+
+  r.post(
+    "/team",
+    need("settings"),
+    zValidator(
+      "json",
+      z.object({
+        email: emailSchema,
+        name: z.string().trim().max(100).optional(),
+        role: roleSchema,
+      }),
+    ),
+    async (c) => {
+      const tenant = c.get("tenant");
+      const b = c.req.valid("json");
+      let [user] = await db.select().from(usersTable).where(eq(usersTable.email, b.email)).limit(1);
+      if (!user) {
+        [user] = await db
+          .insert(usersTable)
+          .values({ email: b.email, name: b.name ?? null })
+          .returning();
+      }
+      if (!user) throw new Error("Gebruiker aanmaken mislukt");
+      const [existing] = await db
+        .select({ id: membershipsTable.id })
+        .from(membershipsTable)
+        .where(and(eq(membershipsTable.tenantId, tenant.id), eq(membershipsTable.userId, user.id)))
+        .limit(1);
+      if (existing) return c.json({ error: "Deze persoon hoort al bij het team" }, 409);
+      await db
+        .insert(membershipsTable)
+        .values({ tenantId: tenant.id, userId: user.id, role: b.role });
+      await audit(c, "team.add", user.id);
+      await sendLoginLink(
+        db,
+        ctx.mailer,
+        ctx.config,
+        user.id,
+        user.email,
+        `Je bent toegevoegd aan ${tenant.name} op Mis en place`,
+      );
+      return c.json({ ok: true }, 201);
+    },
+  );
+
+  r.patch(
+    "/team/:userId",
+    need("settings"),
+    zValidator("json", z.object({ role: roleSchema })),
+    async (c) => {
+      const tenant = c.get("tenant");
+      const userId = c.req.param("userId");
+      const { role } = c.req.valid("json");
+      if (role !== "owner" && (await wouldRemoveLastOwner(tenant.id, userId))) {
+        return c.json({ error: "Er moet minstens één eigenaar overblijven" }, 409);
+      }
+      const [row] = await db
+        .update(membershipsTable)
+        .set({ role })
+        .where(and(eq(membershipsTable.tenantId, tenant.id), eq(membershipsTable.userId, userId)))
+        .returning();
+      if (!row) return c.json({ error: "Teamlid niet gevonden" }, 404);
+      await audit(c, "team.role", userId);
+      return c.json({ ok: true });
+    },
+  );
+
+  r.delete("/team/:userId", need("settings"), async (c) => {
+    const tenant = c.get("tenant");
+    const userId = c.req.param("userId");
+    if (await wouldRemoveLastOwner(tenant.id, userId)) {
+      return c.json({ error: "Er moet minstens één eigenaar overblijven" }, 409);
+    }
+    await db
+      .delete(membershipsTable)
+      .where(and(eq(membershipsTable.tenantId, tenant.id), eq(membershipsTable.userId, userId)));
+    await audit(c, "team.remove", userId);
+    return c.json({ ok: true });
+  });
+
+  /** Volledige export van alle gegevens van de zaak (AVG en geen lock-in). Foto's als publieke URL's. */
+  r.get("/export", need("settings"), async (c) => {
+    const tenant = c.get("tenant");
+    const t = tenant.id;
+    const all = async <T>(q: Promise<T[]>) => q;
+    const [
+      hours,
+      exceptions,
+      menusRows,
+      sections,
+      items,
+      pageRows,
+      eventRows,
+      ann,
+      spec,
+      subs,
+      media,
+      team,
+    ] = await Promise.all([
+      all(db.select().from(openingHours).where(eq(openingHours.tenantId, t))),
+      all(db.select().from(openingExceptions).where(eq(openingExceptions.tenantId, t))),
+      all(db.select().from(menus).where(eq(menus.tenantId, t))),
+      all(db.select().from(menuSections).where(eq(menuSections.tenantId, t))),
+      all(db.select().from(menuItems).where(eq(menuItems.tenantId, t))),
+      all(db.select().from(pages).where(eq(pages.tenantId, t))),
+      all(db.select().from(eventsTable).where(eq(eventsTable.tenantId, t))),
+      all(db.select().from(announcements).where(eq(announcements.tenantId, t))),
+      all(db.select().from(specials).where(eq(specials.tenantId, t))),
+      all(db.select().from(submissions).where(eq(submissions.tenantId, t))),
+      all(db.select().from(mediaAssets).where(eq(mediaAssets.tenantId, t))),
+      listTeam(t),
+    ]);
+    c.header("content-disposition", `attachment; filename="mep-${tenant.slug}-export.json"`);
+    return c.json({
+      exportedAt: new Date().toISOString(),
+      tenant: {
+        name: tenant.name,
+        slug: tenant.slug,
+        type: tenant.type,
+        modules: tenant.modules,
+        locales: tenant.locales,
+        timezone: tenant.timezone,
+      },
+      team,
+      openingHours: hours,
+      openingExceptions: exceptions,
+      menus: menusRows,
+      menuSections: sections,
+      menuItems: items,
+      pages: pageRows,
+      events: eventRows,
+      announcements: ann,
+      specials: spec,
+      submissions: subs,
+      media: media.map((m) => ({
+        ...m,
+        urls: Object.fromEntries(
+          [400, 800, 1600].map((w) => [w, mediaPath(m.id, w as 400 | 800 | 1600)]),
+        ),
+      })),
+    });
   });
 
   // --------------------------- Meldingen ---------------------------
